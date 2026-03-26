@@ -1,6 +1,6 @@
 ---
 name: supaflow-pipelines
-description: This skill should be used when the user asks to "create a pipeline", "sync data", "run a pipeline", "full resync", "reset target", "edit pipeline config", "select objects", "manage schema", "set ingestion mode", "configure load mode", "pipeline settings", "disable pipeline", "enable pipeline", "delete pipeline", "list pipelines", or mentions Supaflow pipelines, data replication, object selection, or pipeline configuration. Covers the full pipeline lifecycle including schema management in the @supaflow/cli.
+description: This skill should be used when the user asks to "create a pipeline", "sync data", "run a pipeline", "full resync", "reset target", "edit pipeline config", "select objects", "manage schema", "set ingestion mode", "configure load mode", "pipeline settings", "disable pipeline", "enable pipeline", "delete pipeline", "list pipelines", or mentions Supaflow pipelines, data replication, object selection, or pipeline configuration. Covers the full pipeline lifecycle including schema management in the @getsupaflow/cli.
 ---
 
 # Supaflow Pipeline Management

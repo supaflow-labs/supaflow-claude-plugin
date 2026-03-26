@@ -1,25 +1,40 @@
 # supaflow-claude-plugin
 
-Claude Code plugin for managing [Supaflow](https://www.supa-flow.io) data pipelines through natural language. Wraps the `@supaflow/cli` so Claude Code can create datasources, build pipelines, schedule syncs, and monitor jobs.
-
-## Prerequisites
-
-- [Claude Code](https://claude.ai/code) installed
-- [Node.js 18+](https://nodejs.org/)
-- `@supaflow/cli` installed globally:
-  ```bash
-  npm install -g @supaflow/cli
-  ```
-- A Supaflow account with an API key (create at [app.supa-flow.io](https://app.supa-flow.io) > Settings > API Keys)
+Claude Code plugin for managing [Supaflow](https://www.supa-flow.io) data pipelines through natural language. Wraps the `@getsupaflow/cli` so Claude Code can create datasources, build pipelines, schedule syncs, and monitor jobs.
 
 ## Install
 
-```bash
-# From the marketplace (when published)
-# claude plugin install supaflow-claude-plugin
+Add the Supaflow marketplace, then install the plugin:
 
-# Local development
+```bash
+claude plugin marketplace add https://github.com/supaflow-labs/supaflow-claude-plugin.git
+claude plugin install supaflow-claude-plugin
+```
+
+For local development, use `--plugin-dir` instead:
+
+```bash
 claude --plugin-dir /path/to/supaflow-claude-plugin
+```
+
+On first session after install, a setup hook checks whether the Supaflow CLI is installed and authenticated. If anything is missing, Claude will guide you through the setup automatically.
+
+### Manual Setup (if needed)
+
+The plugin requires Node.js 18+, the Supaflow CLI, and a Supaflow account:
+
+```bash
+# 1. Install Node.js 18+ (skip if already installed)
+brew install node          # macOS
+# See https://nodejs.org for other platforms
+
+# 2. Install the Supaflow CLI
+npm install -g @getsupaflow/cli
+supaflow --version
+
+# 3. Authenticate (requires an API key from https://app.supa-flow.io > Settings > API Keys)
+supaflow auth login
+supaflow workspaces select
 ```
 
 ## What This Plugin Provides

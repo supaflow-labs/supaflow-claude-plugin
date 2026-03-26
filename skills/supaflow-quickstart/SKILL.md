@@ -10,7 +10,7 @@ Set up a complete data pipeline from authentication through scheduled syncs. Thi
 ## Prerequisites
 
 - Node.js 18+ installed
-- `@supaflow/cli` installed: `npm install -g @supaflow/cli`
+- `@getsupaflow/cli` installed: `npm install -g @getsupaflow/cli`
 - A Supaflow account at `https://app.supa-flow.io`
 - An API key created in Settings > API Keys (starts with `ak_`)
 - Source and destination system credentials available

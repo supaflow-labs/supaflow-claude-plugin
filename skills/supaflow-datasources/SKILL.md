@@ -1,6 +1,6 @@
 ---
 name: supaflow-datasources
-description: This skill should be used when the user asks to "create a datasource", "connect to a database", "set up a connection", "test a datasource", "browse catalog", "discover schema", "refresh schema", "edit datasource credentials", "encrypt secrets", "init datasource", "disable datasource", "enable datasource", "delete datasource", or mentions Supaflow datasources, connectors, connection configuration, env files, or listing source tables. Covers the full datasource lifecycle in the @supaflow/cli.
+description: This skill should be used when the user asks to "create a datasource", "connect to a database", "set up a connection", "test a datasource", "browse catalog", "discover schema", "refresh schema", "edit datasource credentials", "encrypt secrets", "init datasource", "disable datasource", "enable datasource", "delete datasource", or mentions Supaflow datasources, connectors, connection configuration, env files, or listing source tables. Covers the full datasource lifecycle in the @getsupaflow/cli.
 ---
 
 # Supaflow Datasource Management

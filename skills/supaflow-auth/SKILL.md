@@ -1,6 +1,6 @@
 ---
 name: supaflow-auth
-description: This skill should be used when the user asks to "authenticate with Supaflow", "log in to Supaflow", "set up Supaflow CLI", "install Supaflow CLI", "select a workspace", "switch workspace", "check auth status", "configure Supaflow API key", or mentions Supaflow authentication, workspace selection, or CLI setup. Provides guidance for authenticating the @supaflow/cli and selecting the active workspace.
+description: This skill should be used when the user asks to "authenticate with Supaflow", "log in to Supaflow", "set up Supaflow CLI", "install Supaflow CLI", "select a workspace", "switch workspace", "check auth status", "configure Supaflow API key", or mentions Supaflow authentication, workspace selection, or CLI setup. Provides guidance for authenticating the @getsupaflow/cli and selecting the active workspace.
 ---
 
 # Supaflow Authentication and Workspace Setup
@@ -9,28 +9,68 @@ Authenticate the Supaflow CLI and select a workspace before running any other co
 
 ## Prerequisites
 
-The `@supaflow/cli` package must be installed globally:
+### Node.js 18+
+
+Check if Node.js is installed and meets the minimum version:
 
 ```bash
-npm install -g @supaflow/cli
+node --version
+# Requires v18.x.x or higher
+```
+
+If Node.js is missing or too old, install it:
+
+```bash
+# macOS (Homebrew)
+brew install node
+
+# Ubuntu/Debian
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Windows (winget)
+winget install OpenJS.NodeJS.LTS
+```
+
+### Supaflow CLI
+
+Install the CLI globally via npm:
+
+```bash
+npm install -g @getsupaflow/cli
 supaflow --version
 ```
 
-A Supaflow account is required. Sign up at `https://app.supa-flow.io/sign-up`.
+If `supaflow` is not found after install, verify the npm global bin directory is on the PATH:
+
+```bash
+npm bin -g
+# Add the output directory to PATH if needed
+```
+
+### Supaflow Account and API Key
+
+These steps require the user to act in a browser. Guide them through each step:
+
+1. **Sign up** (skip if already have an account):
+   - Open `https://app.supa-flow.io/sign-up`
+   - Create an account with email or SSO
+   - Verify email if prompted
+   - On first login, the app creates a default workspace automatically
+
+2. **Create an API key**:
+   - Open `https://app.supa-flow.io` and log in
+   - Click the gear icon in the left sidebar to open **Settings**
+   - Click **API Keys** in the settings menu
+   - Click **Create key**
+   - Enter a name (e.g., "CLI Access") and click **Create**
+   - Copy the key immediately -- it starts with `ak_` and is only shown once
+
+API keys are scoped to the organization that is active when created. To access a different organization's workspaces, switch to that organization in the web app first, then create a separate key.
+
+If the user already has an API key, skip straight to authentication below.
 
 ## Authentication Flow
-
-### Step 1: Create an API Key
-
-The user must create an API key in the Supaflow web app:
-
-1. Log in at `https://app.supa-flow.io`
-2. Navigate to Settings (gear icon) > API Keys
-3. Click "Create key", name it, copy the `ak_` prefixed key
-
-API keys are scoped to the organization active when created. Different organizations require separate keys.
-
-### Step 2: Authenticate
 
 ```bash
 supaflow auth login
@@ -49,9 +89,9 @@ Successful output:
 { "authenticated": true, "source": "config" }
 ```
 
-The API key is stored in `~/.supaflow/config.json`.
+The API key is stored in `~/.supaflow/config.json` with user-only file permissions (mode 0600). To avoid storing the key on disk, set `SUPAFLOW_API_KEY` as an environment variable instead.
 
-### Step 3: Select a Workspace
+### Select a Workspace
 
 List available workspaces and select one:
 

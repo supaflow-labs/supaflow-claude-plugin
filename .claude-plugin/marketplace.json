@@ -1,0 +1,19 @@
+{
+  "name": "supaflow",
+  "metadata": {
+    "description": "Supaflow data pipeline management plugin for Claude Code"
+  },
+  "owner": {
+    "name": "supaflow-labs",
+    "email": "support@supa-flow.io"
+  },
+  "plugins": [
+    {
+      "name": "supaflow-claude-plugin",
+      "description": "Manage Supaflow data pipelines, datasources, jobs, and schedules through Claude Code using the @getsupaflow/cli",
+      "category": "development",
+      "source": "./",
+      "homepage": "https://www.supa-flow.io"
+    }
+  ]
+}

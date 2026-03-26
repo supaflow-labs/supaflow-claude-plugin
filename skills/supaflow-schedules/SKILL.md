@@ -1,6 +1,6 @@
 ---
 name: supaflow-schedules
-description: This skill should be used when the user asks to "schedule a pipeline", "create a schedule", "set up cron", "automate sync", "recurring pipeline run", "edit schedule", "run schedule now", "view schedule history", "pause schedule", "resume schedule", "disable schedule", "enable schedule", "delete schedule", or mentions Supaflow schedules, cron expressions, pipeline automation, task scheduling, orchestration scheduling, or scheduled sync. Covers schedule lifecycle management in the @supaflow/cli.
+description: This skill should be used when the user asks to "schedule a pipeline", "create a schedule", "set up cron", "automate sync", "recurring pipeline run", "edit schedule", "run schedule now", "view schedule history", "pause schedule", "resume schedule", "disable schedule", "enable schedule", "delete schedule", or mentions Supaflow schedules, cron expressions, pipeline automation, task scheduling, orchestration scheduling, or scheduled sync. Covers schedule lifecycle management in the @getsupaflow/cli.
 ---
 
 # Supaflow Schedule Management

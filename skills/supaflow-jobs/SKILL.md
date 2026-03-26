@@ -1,6 +1,6 @@
 ---
 name: supaflow-jobs
-description: This skill should be used when the user asks to "check job status", "monitor a pipeline run", "view job logs", "list running jobs", "check failed jobs", "get job details", "see job metrics", "troubleshoot a failed sync", "view job errors", "why did my pipeline fail", "debug pipeline failure", or mentions Supaflow jobs, pipeline execution status, sync progress, or job monitoring. Covers job listing, status inspection, and log retrieval in the @supaflow/cli.
+description: This skill should be used when the user asks to "check job status", "monitor a pipeline run", "view job logs", "list running jobs", "check failed jobs", "get job details", "see job metrics", "troubleshoot a failed sync", "view job errors", "why did my pipeline fail", "debug pipeline failure", or mentions Supaflow jobs, pipeline execution status, sync progress, or job monitoring. Covers job listing, status inspection, and log retrieval in the @getsupaflow/cli.
 ---
 
 # Supaflow Job Monitoring

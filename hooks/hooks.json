@@ -1,0 +1,17 @@
+{
+  "description": "Verify Supaflow CLI installation and authentication on session start",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/check-setup.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

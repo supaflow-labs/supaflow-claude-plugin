@@ -1,7 +1,7 @@
 {
   "name": "supaflow-claude-plugin",
   "version": "0.1.0",
-  "description": "Manage Supaflow data pipelines, datasources, jobs, and schedules through Claude Code using the @supaflow/cli",
+  "description": "Manage Supaflow data pipelines, datasources, jobs, and schedules through Claude Code using the @getsupaflow/cli",
   "author": {
     "name": "supaflow-labs",
     "email": "support@supa-flow.io",
