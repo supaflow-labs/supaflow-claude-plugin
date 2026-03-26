@@ -9,6 +9,18 @@ Manage datasource connections to external systems (databases, APIs, cloud storag
 
 All commands require prior authentication and workspace selection (see the supaflow-auth skill).
 
+## Before Creating a Datasource
+
+**Always check if a matching datasource already exists first.** The user may already have a connection to the system they want to use.
+
+```bash
+supaflow datasources list --json
+```
+
+Look for an existing datasource with the same connector type and ask the user before creating a duplicate. For example, if the user says "connect to Salesforce" and there is already a Salesforce datasource, ask: "You already have a Salesforce datasource named 'Salesforce Prod'. Do you want to use that one, or create a new connection?"
+
+Only proceed with creation if no suitable datasource exists or the user explicitly wants a new one.
+
 ## Datasource Creation (Two-Step Process)
 
 ### Step 1: Scaffold the Env File

@@ -47,6 +47,14 @@ Pass the workspace name, api_name, or UUID directly to avoid interactive prompts
 
 ### Step 3: Create Source Datasource
 
+First, check if a matching datasource already exists:
+
+```bash
+supaflow datasources list --json
+```
+
+If a suitable source datasource exists, skip to Step 5. Otherwise, create one:
+
 ```bash
 # List available connector types
 supaflow connectors list --json
@@ -66,7 +74,7 @@ Wait for the connection test to succeed. On failure, fix credentials in the env 
 
 ### Step 4: Create Destination Datasource
 
-Same process as Step 3 but for the destination warehouse:
+Check existing datasources first (from Step 3's list). If a suitable destination already exists, skip to Step 5. Otherwise, same process as Step 3:
 
 ```bash
 supaflow datasources init --connector <TYPE> --name "<Destination Name>" --json
