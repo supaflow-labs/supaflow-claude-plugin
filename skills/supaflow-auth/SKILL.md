@@ -126,7 +126,7 @@ supaflow workspaces select 0ca8d04f-340d-4546-97f2-311f5662f2db
 supaflow workspaces select
 ```
 
-All subsequent commands operate within the selected workspace.
+The selection is saved to `~/.supaflow/config.json` and persists across sessions. All subsequent commands operate within the selected workspace without needing `--workspace` or `SUPAFLOW_WORKSPACE_ID`.
 
 ## Environment Variables
 
