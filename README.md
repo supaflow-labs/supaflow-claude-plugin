@@ -55,6 +55,8 @@ For non-interactive use (CI/CD, scripts, agent automation):
 | `SUPAFLOW_API_KEY` | API key (alternative to `supaflow auth login`) |
 | `SUPAFLOW_WORKSPACE_ID` | Workspace UUID (alternative to `supaflow workspaces select`) |
 | `SUPAFLOW_APP_URL` | Override app URL (default: `https://app.supa-flow.io`) |
+| `SUPAFLOW_SUPABASE_URL` | Direct Supabase project URL (bypasses bootstrap) |
+| `SUPAFLOW_SUPABASE_ANON_KEY` | Supabase anon key (required with `SUPAFLOW_SUPABASE_URL` or `--supabase-url`) |
 
 ## Quick Example
 

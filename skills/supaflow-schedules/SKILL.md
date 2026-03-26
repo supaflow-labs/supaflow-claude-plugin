@@ -1,11 +1,11 @@
 ---
 name: supaflow-schedules
-description: This skill should be used when the user asks to "schedule a pipeline", "create a schedule", "set up cron", "automate sync", "recurring pipeline run", "edit schedule", "run schedule now", "view schedule history", "pause schedule", "resume schedule", "disable schedule", "enable schedule", "delete schedule", or mentions Supaflow schedules, cron expressions, pipeline automation, or scheduled sync. Covers schedule lifecycle management in the @supaflow/cli.
+description: This skill should be used when the user asks to "schedule a pipeline", "create a schedule", "set up cron", "automate sync", "recurring pipeline run", "edit schedule", "run schedule now", "view schedule history", "pause schedule", "resume schedule", "disable schedule", "enable schedule", "delete schedule", or mentions Supaflow schedules, cron expressions, pipeline automation, task scheduling, orchestration scheduling, or scheduled sync. Covers schedule lifecycle management in the @supaflow/cli.
 ---
 
 # Supaflow Schedule Management
 
-Schedules trigger pipelines on a cron-based recurring schedule. Each schedule targets one pipeline and uses a standard 5-field cron expression executed in UTC.
+Schedules trigger pipelines, tasks, or orchestrations on a cron-based recurring schedule. Each schedule targets exactly one resource and uses a standard 5-field cron expression executed in UTC.
 
 All commands require prior authentication and workspace selection (see the supaflow-auth skill).
 
@@ -23,12 +23,17 @@ supaflow schedules create \
 
 Required flags:
 - `--name`: Unique name within the workspace (also used as the identifier for schedule commands)
-- `--pipeline`: Pipeline UUID or api_name
 - `--cron`: Standard 5-field cron expression (minute, hour, day-of-month, month, day-of-week)
+- **Exactly one** target flag (required):
+  - `--pipeline <identifier>`: Target a pipeline (UUID or api_name)
+  - `--task <identifier>`: Target a task (UUID or api_name)
+  - `--orchestration <identifier>`: Target an orchestration (UUID or api_name)
 
 Optional flags:
 - `--timezone`: Display timezone (all execution is in UTC; timezone is display-only)
 - `--description`: Human-readable description
+
+Providing more than one target flag is an error.
 
 ## Cron Expression Reference
 
@@ -76,15 +81,17 @@ supaflow schedules edit <name> --name "New Name" --description "Updated descript
 # Change display timezone
 supaflow schedules edit <name> --timezone "UTC" --json
 
-# Change target pipeline
+# Change target (pipeline, task, or orchestration -- provide exactly one)
 supaflow schedules edit <name> --pipeline other_pipeline --json
+supaflow schedules edit <name> --task my_task --json
+supaflow schedules edit <name> --orchestration my_orch --json
 ```
 
 Multiple flags can be combined in a single edit command.
 
 ## Manual Trigger
 
-Trigger an immediate execution of a schedule (runs the associated pipeline now):
+Trigger an immediate execution of a schedule (runs the associated target now):
 
 ```bash
 supaflow schedules run <name> --json

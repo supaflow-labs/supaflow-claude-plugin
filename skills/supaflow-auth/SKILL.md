@@ -88,8 +88,28 @@ For non-interactive use (scripts, CI/CD, agents), set environment variables inst
 | `SUPAFLOW_API_KEY` | API key (alternative to `supaflow auth login`) |
 | `SUPAFLOW_WORKSPACE_ID` | Workspace UUID (alternative to `supaflow workspaces select`) |
 | `SUPAFLOW_APP_URL` | Override app URL (default: `https://app.supa-flow.io`) |
+| `SUPAFLOW_SUPABASE_URL` | Direct Supabase project URL (bypasses bootstrap entirely) |
+| `SUPAFLOW_SUPABASE_ANON_KEY` | Supabase anon key (required when using `SUPAFLOW_SUPABASE_URL` or `--supabase-url`) |
 
-When both env vars are set, skip the login and workspace select steps entirely.
+When `SUPAFLOW_API_KEY` and `SUPAFLOW_WORKSPACE_ID` are set, skip the login and workspace select steps entirely.
+
+### Direct Supabase Override (Dev/Testing)
+
+When the bootstrap endpoint at `app.supa-flow.io` is unavailable or when testing against a non-standard environment, bypass it entirely by providing the Supabase connection directly:
+
+```bash
+export SUPAFLOW_SUPABASE_URL=https://your-project.supabase.co
+export SUPAFLOW_SUPABASE_ANON_KEY=eyJ...
+export SUPAFLOW_API_KEY=<jwt-token>   # must be a valid JWT, not an ak_ key
+```
+
+Or per-command via the `--supabase-url` flag (still requires `SUPAFLOW_SUPABASE_ANON_KEY` env var):
+
+```bash
+supaflow pipelines list --supabase-url https://your-project.supabase.co --json
+```
+
+**Priority order**: env var override > `--supabase-url` flag > bootstrap endpoint. When using the direct override path, `SUPAFLOW_API_KEY` must contain a valid JWT (not an `ak_` API key), because the bootstrap token-exchange step is skipped.
 
 ## Logout
 
@@ -108,6 +128,7 @@ Every Supaflow CLI command supports these flags:
 | `--json` | Machine-readable JSON output (always use for agent workflows) |
 | `--workspace <id>` | Override the active workspace for this command |
 | `--api-key <key>` | Override the stored API key for this command |
+| `--supabase-url <url>` | Override Supabase project URL (requires `SUPAFLOW_SUPABASE_ANON_KEY` env var) |
 | `--verbose` | Enable debug output |
 | `--no-color` | Suppress ANSI colors |
 
@@ -153,7 +174,7 @@ Exception: schedules resolve by **name** (not api_name), since schedule names ar
 | "Not authenticated" | Run `supaflow auth login` or set `SUPAFLOW_API_KEY` |
 | "No workspace selected" | Run `supaflow workspaces select` or set `SUPAFLOW_WORKSPACE_ID` |
 | "Invalid, revoked, or expired API key" | Create a new key in Settings > API Keys |
-| "Bootstrap endpoint unavailable" | Network issue reaching `app.supa-flow.io` |
+| "Bootstrap endpoint unavailable" | Network issue reaching `app.supa-flow.io`. Set `SUPAFLOW_SUPABASE_URL` and `SUPAFLOW_SUPABASE_ANON_KEY` to bypass bootstrap |
 
 ## Available Connectors
 
