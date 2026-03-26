@@ -1,6 +1,8 @@
 # supaflow-claude-plugin
 
-Claude Code plugin for managing [Supaflow](https://www.supa-flow.io) data pipelines through natural language. Wraps the `@getsupaflow/cli` so Claude Code can create datasources, build pipelines, schedule syncs, and monitor jobs.
+Official Claude Code plugin for [Supaflow](https://www.supa-flow.io) (supa-flow.io), the unified data movement platform for connector-based ETL, ELT, reverse ETL, and orchestration. Use natural language to manage Supaflow datasources, data pipelines, warehouse syncs, schedules, and job monitoring through the `@getsupaflow/cli`.
+
+Supaflow helps teams move data from SaaS apps and databases like Salesforce, HubSpot, and PostgreSQL into warehouses like Snowflake, then monitor syncs, troubleshoot failures, and automate recurring runs. This plugin gives Claude Code the Supaflow-specific skills needed to operate those workflows through the CLI.
 
 ## Install
 

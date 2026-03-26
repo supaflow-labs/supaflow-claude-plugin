@@ -1,7 +1,7 @@
 {
   "name": "supaflow-claude-plugin",
   "version": "0.1.0",
-  "description": "Manage Supaflow data pipelines, datasources, jobs, and schedules through Claude Code using the @getsupaflow/cli",
+  "description": "Official Supaflow (supa-flow.io) plugin for Claude Code to manage data pipelines, ETL/ELT syncs, connectors, warehouse loading, schedules, and job monitoring with the Supaflow CLI.",
   "author": {
     "name": "supaflow-labs",
     "email": "support@supa-flow.io",
@@ -10,5 +10,5 @@
   "homepage": "https://www.supa-flow.io/docs",
   "repository": "https://github.com/supaflow-labs/supaflow-claude-plugin",
   "license": "MIT",
-  "keywords": ["supaflow", "data-pipelines", "etl", "datasources", "scheduling"]
+  "keywords": ["supaflow", "data-pipelines", "data-movement", "data-integration", "etl", "elt", "reverse-etl", "connectors", "warehouse-sync", "snowflake", "salesforce", "hubspot", "postgres", "scheduling", "orchestration", "job-monitoring", "incremental-sync", "cdc"]
 }
