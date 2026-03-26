@@ -5,6 +5,8 @@ description: This skill should be used when the user asks to "authenticate with 
 
 # Supaflow Authentication and Workspace Setup
 
+**AGENT BEHAVIOR: Execute all CLI commands directly via Bash. Only ask the user for their API key and workspace preference -- do not ask them to run commands manually.**
+
 Authenticate the Supaflow CLI and select a workspace before running any other commands. All Supaflow CLI operations require a valid API key and an active workspace.
 
 ## Prerequisites

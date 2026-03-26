@@ -5,15 +5,15 @@ description: This skill should be used when the user asks to "set up a Supaflow 
 
 # Supaflow End-to-End Pipeline Setup
 
+**AGENT BEHAVIOR: Execute commands directly via Bash. Do NOT ask the user to run commands manually. The only things to ask the user for are: credentials, workspace selection, and object selection preferences. Everything else should be executed by the agent and the results interpreted automatically.**
+
 Set up a complete data pipeline from authentication through scheduled syncs. This skill provides the correct order of operations -- individual command details are in the domain-specific skills (supaflow-auth, supaflow-datasources, supaflow-pipelines, supaflow-schedules, supaflow-jobs).
 
 ## Prerequisites
 
-- Node.js 18+ installed
-- `@getsupaflow/cli` installed: `npm install -g @getsupaflow/cli`
-- A Supaflow account at `https://app.supa-flow.io`
-- An API key created in Settings > API Keys (starts with `ak_`)
-- Source and destination system credentials available
+Before starting, verify:
+1. CLI installed: run `supaflow --version`. If not found, run `npm install -g @getsupaflow/cli`
+2. User must provide: API key (from Settings > API Keys at `https://app.supa-flow.io`), source credentials, destination credentials
 
 ## Workflow Order
 

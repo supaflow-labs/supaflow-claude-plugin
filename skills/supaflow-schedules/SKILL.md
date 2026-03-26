@@ -5,6 +5,8 @@ description: This skill should be used when the user asks to "schedule a pipelin
 
 # Supaflow Schedule Management
 
+**AGENT BEHAVIOR: Execute all CLI commands directly via Bash. Only ask the user for schedule preferences (frequency, timezone) -- do not ask them to run commands manually. Always use `--json` flag for machine-readable output.**
+
 Schedules trigger pipelines, tasks, or orchestrations on a cron-based recurring schedule. Each schedule targets exactly one resource and uses a standard 5-field cron expression executed in UTC.
 
 All commands require prior authentication and workspace selection (see the supaflow-auth skill).

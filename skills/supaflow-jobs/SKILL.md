@@ -5,6 +5,8 @@ description: This skill should be used when the user asks to "check job status",
 
 # Supaflow Job Monitoring
 
+**AGENT BEHAVIOR: Execute all CLI commands directly via Bash. Use `jobs status` for polling (lightweight), `jobs get` for final results. Always use `--json` flag. Do not ask the user to run job commands manually.**
+
 Jobs are async execution records created by pipeline syncs, datasource tests, and schema refreshes. Every `pipelines sync`, `datasources create`, `datasources test`, and `datasources refresh` command creates a job.
 
 All commands require prior authentication and workspace selection (see the supaflow-auth skill).
