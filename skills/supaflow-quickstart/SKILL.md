@@ -22,8 +22,8 @@ The eight steps below must be followed in order. Each step depends on the previo
 ### Step 1: Authenticate
 
 ```bash
-supaflow auth login
-# Paste API key when prompted
+supaflow auth login --key <api-key>
+# Ask user for their API key, then pass it directly (non-interactive)
 
 supaflow auth status --json
 # Verify: authenticated = true

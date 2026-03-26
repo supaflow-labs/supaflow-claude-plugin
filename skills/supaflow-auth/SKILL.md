@@ -5,7 +5,7 @@ description: This skill should be used when the user asks to "authenticate with 
 
 # Supaflow Authentication and Workspace Setup
 
-**AGENT BEHAVIOR: Execute all CLI commands directly via Bash. Only ask the user for their API key and workspace preference -- do not ask them to run commands manually.**
+**AGENT BEHAVIOR: Execute all CLI commands directly via Bash. Ask the user for their API key, then run `supaflow auth login --key <key>` (non-interactive). Do NOT use the interactive prompt. Do NOT ask the user to run commands manually.**
 
 Authenticate the Supaflow CLI and select a workspace before running any other commands. All Supaflow CLI operations require a valid API key and an active workspace.
 
@@ -75,8 +75,11 @@ If the user already has an API key, skip straight to authentication below.
 ## Authentication Flow
 
 ```bash
+# Non-interactive (for agents -- pass key directly)
+supaflow auth login --key <api-key>
+
+# Interactive (for humans -- prompts for key)
 supaflow auth login
-# Paste API key when prompted
 ```
 
 Verify authentication:
