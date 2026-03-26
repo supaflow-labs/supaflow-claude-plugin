@@ -5,7 +5,11 @@ description: This skill should be used when the user asks to "set up a Supaflow 
 
 # Supaflow End-to-End Pipeline Setup
 
-**AGENT BEHAVIOR: Execute commands directly via Bash. Do NOT ask the user to run commands manually. The only things to ask the user for are: credentials, workspace selection, and object selection preferences. Everything else should be executed by the agent and the results interpreted automatically.**
+**AGENT BEHAVIOR:**
+- **Execute commands directly via Bash.** Do NOT ask the user to run commands manually.
+- **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only the fields you need. NEVER dump full JSON into the conversation. For large outputs (catalog, schema list, jobs), write to a file and parse with a script.
+- **Use `jobs status` for polling** (4 fields, ~100 bytes). Only use `jobs get` after the job reaches a terminal state.
+- **Only ask the user for:** credentials, workspace selection, and object selection preferences.
 
 Set up a complete data pipeline from authentication through scheduled syncs. This skill provides the correct order of operations -- individual command details are in the domain-specific skills (supaflow-auth, supaflow-datasources, supaflow-pipelines, supaflow-schedules, supaflow-jobs).
 

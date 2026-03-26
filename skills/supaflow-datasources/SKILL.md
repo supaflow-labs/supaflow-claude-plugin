@@ -5,7 +5,10 @@ description: This skill should be used when the user asks to "create a datasourc
 
 # Supaflow Datasource Management
 
-**AGENT BEHAVIOR: Execute all CLI commands directly via Bash. Only ask the user for connection credentials and preferences -- do not ask them to run commands manually. Always use `--json` flag for machine-readable output.**
+**AGENT BEHAVIOR:**
+- **Execute all CLI commands directly via Bash.** Do NOT ask the user to run commands manually.
+- **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only the fields you need. NEVER dump full JSON into the conversation. For catalog (can be 100s of objects), always use `--output <file>` and parse with a script.
+- **Only ask the user for:** connection credentials and preferences.
 
 Manage datasource connections to external systems (databases, APIs, cloud storage). Each datasource stores encrypted connection credentials and discovers the source schema automatically.
 

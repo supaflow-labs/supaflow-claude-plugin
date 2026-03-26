@@ -5,7 +5,10 @@ description: This skill should be used when the user asks to "create a pipeline"
 
 # Supaflow Pipeline Management
 
-**AGENT BEHAVIOR: Execute all CLI commands directly via Bash. Only ask the user for pipeline name, object selection preferences, and config choices -- do not ask them to run commands manually. Always use `--json` flag for machine-readable output.**
+**AGENT BEHAVIOR:**
+- **Execute all CLI commands directly via Bash.** Do NOT ask the user to run commands manually.
+- **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only the fields you need. NEVER dump full JSON into the conversation. For schema list and object selection, parse with scripts.
+- **Only ask the user for:** pipeline name, object selection preferences, and config choices.
 
 Pipelines move data from a source datasource to a destination warehouse. Each pipeline belongs to a project (which defines the destination) and selects which objects to sync.
 

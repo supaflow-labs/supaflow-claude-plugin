@@ -5,7 +5,10 @@ description: This skill should be used when the user asks to "check job status",
 
 # Supaflow Job Monitoring
 
-**AGENT BEHAVIOR: Execute all CLI commands directly via Bash. Use `jobs status` for polling (lightweight), `jobs get` for final results. Always use `--json` flag. Do not ask the user to run job commands manually.**
+**AGENT BEHAVIOR:**
+- **Execute all CLI commands directly via Bash.** Do NOT ask the user to run commands manually.
+- **Use `jobs status` for polling** (~100 bytes). Only use `jobs get` after terminal state.
+- **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only status/summary. NEVER dump full job JSON into the conversation.
 
 Jobs are async execution records created by pipeline syncs, datasource tests, and schema refreshes. Every `pipelines sync`, `datasources create`, `datasources test`, and `datasources refresh` command creates a job.
 
