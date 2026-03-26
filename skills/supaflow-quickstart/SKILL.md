@@ -40,10 +40,10 @@ export SUPAFLOW_WORKSPACE_ID=<uuid>
 
 ```bash
 supaflow workspaces list --json
-supaflow workspaces select
+supaflow workspaces select <name-or-api_name-or-uuid>
 ```
 
-Skip if `SUPAFLOW_WORKSPACE_ID` is already set.
+Pass the workspace name, api_name, or UUID directly to avoid interactive prompts. Skip if `SUPAFLOW_WORKSPACE_ID` is already set.
 
 ### Step 3: Create Source Datasource
 

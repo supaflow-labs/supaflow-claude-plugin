@@ -110,11 +110,20 @@ supaflow workspaces list --json
 }
 ```
 
-Select the workspace:
+Select the workspace by name, api_name, or UUID (non-interactive, agent-friendly):
 
 ```bash
+# By name
+supaflow workspaces select Dev
+
+# By api_name
+supaflow workspaces select DEV
+
+# By UUID
+supaflow workspaces select 0ca8d04f-340d-4546-97f2-311f5662f2db
+
+# Interactive (prompts user -- avoid in agent workflows)
 supaflow workspaces select
-# Interactive prompt to choose
 ```
 
 All subsequent commands operate within the selected workspace.
