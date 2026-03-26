@@ -99,7 +99,15 @@ supaflow projects create \
 
 ### Step 6: Select Objects and Create Pipeline
 
-Browse the source catalog and choose which objects (tables) to sync:
+First, check if a pipeline already exists between this source and destination:
+
+```bash
+supaflow pipelines list --json
+```
+
+If a matching pipeline exists, ask the user if they want to edit it or add objects to it instead. Creating duplicate pipelines to the same destination causes merge conflicts and data corruption.
+
+If creating a new pipeline, browse the source catalog and choose which objects (tables) to sync:
 
 ```bash
 # Export discovered objects

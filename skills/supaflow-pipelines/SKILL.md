@@ -23,6 +23,22 @@ supaflow projects create --name "My Project" --destination <datasource-identifie
 
 The `--destination` flag accepts a datasource UUID or api_name. Project type defaults to `pipeline`.
 
+## Before Creating a Pipeline
+
+**Always check for existing pipelines between the same source and destination first.** Duplicate pipelines writing to the same destination schema cause merge conflicts and data corruption.
+
+```bash
+supaflow pipelines list --json
+```
+
+Review the results for pipelines with the same source and destination. If one exists, inform the user:
+- What pipeline already exists (name, source, destination)
+- What objects it syncs (`supaflow pipelines schema list <identifier> --json`)
+- Offer to **edit** the existing pipeline or **add objects** to it instead of creating a new one
+- If the user still wants a new pipeline, warn that it should use different objects or a different destination schema prefix to avoid writing to the same tables
+
+Only create a new pipeline if no existing pipeline covers the same source-destination pair, or the user explicitly confirms they want a separate one.
+
 ## Creating a Pipeline
 
 ```bash
