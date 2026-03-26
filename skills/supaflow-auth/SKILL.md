@@ -60,7 +60,7 @@ These steps require the user to act in a browser. Guide them through each step:
 
 2. **Create an API key**:
    - Open `https://app.supa-flow.io` and log in
-   - Click the gear icon in the left sidebar to open **Settings**
+   - Click the gear icon in the top-right corner (next to your profile avatar) to open **Settings**
    - Click **API Keys** in the settings menu
    - Click **Create key**
    - Enter a name (e.g., "CLI Access") and click **Create**
