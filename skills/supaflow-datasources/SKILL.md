@@ -9,11 +9,23 @@ description: This skill should be used when the user asks to "create a datasourc
 - **Execute all CLI commands directly via Bash.** Do NOT ask the user to run commands manually.
 - **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only the fields you need. NEVER dump full JSON into the conversation. For catalog (can be 100s of objects), always use `--output <file>` and parse with a script.
 - **Only ask the user for:** non-sensitive connection details (host, port, database, username, etc.).
-- **NEVER ask for passwords or secrets in chat.** Instead, fill in all non-sensitive fields in the env file, then ask the user to add sensitive fields themselves:
-  1. Fill non-sensitive fields in the env file via Edit tool
-  2. Tell the user: "I've filled in the connection details. Please open `<filename>.env` and add the password/secret fields marked `(sensitive)`. Type `done` when ready."
-  3. Optionally open the file for them: `open <filename>.env` (macOS) or suggest `! $EDITOR <filename>.env`
-  4. Once user confirms, run `datasources create --from <file>` which auto-encrypts sensitive fields on disk
+- **NEVER ask for passwords or secrets in chat.** The generated env file marks each property with annotations in comments: `(required)`, `(optional)`, `(sensitive)`. Read the env file to identify which fields are sensitive vs non-sensitive. Then:
+  1. Read the generated env file to identify fields
+  2. Ask the user for all **non-sensitive required fields** (host, port, database, username, etc.)
+  3. Fill those in via Edit tool
+  4. Tell the user which **sensitive fields** still need to be filled: "I've filled in the connection details. Please open `<filename>.env` and add these sensitive fields: `password`. Type `done` when ready."
+  5. Optionally open the file for them: `open <filename>.env` (macOS) or suggest `! $EDITOR <filename>.env`
+  6. Once user confirms, run `datasources create --from <file>` which auto-encrypts sensitive fields on disk
+
+**Env file annotation format:**
+```env
+# Database Host (required)          <-- non-sensitive, ask in chat
+host=
+# Password (required, sensitive)    <-- sensitive, user fills manually
+password=
+# SSL Mode (optional)               <-- optional, use default
+sslMode=prefer
+```
 
 Manage datasource connections to external systems (databases, APIs, cloud storage). Each datasource stores encrypted connection credentials and discovers the source schema automatically.
 
