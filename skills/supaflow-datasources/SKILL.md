@@ -31,6 +31,24 @@ Manage datasource connections to external systems (databases, APIs, cloud storag
 
 All commands require prior authentication and workspace selection (see the supaflow-auth skill).
 
+## Connector Setup Guides
+
+Each connector may require prerequisites (user accounts, permissions, network access, API keys). If the user needs help with setup, **fetch the Supaflow docs** which contain connector-specific setup guides with SQL scripts, configuration steps, and required permissions:
+
+```bash
+# Fetch all Supaflow docs as LLM-ready markdown (single file, all connectors)
+curl -s https://www.supa-flow.io/docs/llms/docs.txt
+```
+
+This file contains setup guides for every connector (PostgreSQL, Snowflake, S3, Salesforce, HubSpot, SQL Server, etc.) including:
+- Required database users and permissions (e.g., CREATE USER, GRANT SELECT)
+- Snowflake warehouse/role setup scripts
+- S3 bucket and IAM role configuration
+- OAuth app setup for Salesforce/HubSpot
+- Network access and firewall rules
+
+If the user hasn't set up the source/destination system yet, fetch the docs and help them through the setup before creating the datasource in Supaflow.
+
 ## Before Creating a Datasource
 
 **Always check if a matching datasource already exists first.** The user may already have a connection to the system they want to use.
