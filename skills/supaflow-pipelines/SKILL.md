@@ -46,8 +46,37 @@ Only create a new pipeline if no existing pipeline covers the same source-destin
 
 ## Creating a Pipeline
 
+**Before running `pipelines create`, ask the user about these key settings.** Present the options with defaults highlighted. If the user says "just use defaults", skip the config file.
+
+**Pipeline prefix** (destination schema name):
+- Auto-generated from source type (e.g., `sqlserver`, `hubspot`)
+- Ask: "Your data will be written to the `<source_type>` schema in Snowflake. Want to use this or a custom prefix?"
+- If custom, set `pipeline_prefix` and `is_custom_prefix: true` in config
+
+**Ingestion Mode** -- how data is synced from source:
+- `HISTORICAL_PLUS_INCREMENTAL` (default) -- initial full sync, then only changes
+- `HISTORICAL` -- full sync every time (higher cost)
+- `INCREMENTAL` -- only new/changed data (skips initial full load)
+
+**Load Mode** -- how data is loaded into destination:
+- `MERGE` (default) -- insert new, update existing (needs primary key)
+- `APPEND` -- add new records only (good for logs/events)
+- `TRUNCATE_AND_LOAD` -- delete all then reload (good for staging tables)
+- `OVERWRITE` -- drop and recreate tables
+
+**Schema Evolution** -- how source schema changes propagate:
+- `ALLOW_ALL` (default) -- automatically propagate all changes
+- `BLOCK_ALL` -- prevent any modifications
+- `COLUMN_LEVEL_ONLY` -- allow column additions only
+
+If the user wants non-default settings, create a config file:
 ```bash
-# Minimal: all discovered objects selected
+echo '{"ingestion_mode": "INCREMENTAL", "load_mode": "APPEND", "pipeline_prefix": "my_custom_schema", "is_custom_prefix": true}' > pipeline-config.json
+supaflow pipelines create ... --config pipeline-config.json --json
+```
+
+```bash
+# Minimal: all discovered objects selected, default config
 supaflow pipelines create \
   --name "Postgres to Snowflake" \
   --source <datasource-identifier> \
