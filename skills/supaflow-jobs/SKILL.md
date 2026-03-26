@@ -54,10 +54,16 @@ supaflow jobs get <job-id> --json
 
 **Polling pattern for agents:**
 ```bash
-# Poll until terminal -- each call is lightweight while running
+# Use `jobs status` for polling -- returns only 4 fields (~100 bytes)
+supaflow jobs status <job-id> --json
+# Returns: { "id": "...", "job_status": "running", "status_message": "...", "job_response": null }
+
+# Once terminal (completed/failed), use `jobs get` for full details
 supaflow jobs get <job-id> --json
-# Check job_status: "running" = poll again, "completed"/"failed" = done (details included)
+# Returns: job header + object_details with per-object metrics
 ```
+
+**Use `jobs status` (not `jobs get`) for polling.** It returns 4 fields vs 14+ fields. Use `jobs get` only when you need the final result.
 
 Job details (only in terminal state) include per-object metrics showing the three-stage pipeline execution:
 
