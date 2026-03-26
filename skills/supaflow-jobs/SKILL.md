@@ -71,7 +71,30 @@ public.contacts           completed   completed   completed   16
 public.tasks              completed   completed   completed   3
 ```
 
-With `--json`, the response includes structured per-object detail with status, row counts, and timing for each stage.
+**JSON field reference for `jobs get`:**
+- `job_status`: overall job status
+- `status_message`: human-readable status description
+- `execution_duration_ms`: total duration in milliseconds
+- `reference_id`: pipeline/datasource UUID that triggered this job
+- `reference_type`: `pipeline` or `datasource`
+- `object_details[].fully_qualified_source_object_name`: the object name
+- `object_details[].ingestion_status`, `staging_status`, `loading_status`: per-stage status
+- `object_details[].ingestion_metrics.output_row_count`: rows read from source
+
+Note: `jobs get` does not include `job_parameters` (encrypted credentials). Use `jobs logs` for the job response payload.
+
+**Parsing tip for agents** -- to extract object names and status from JSON:
+```bash
+supaflow jobs get <job-id> --json | python3 -c "
+import sys,json
+j = json.load(sys.stdin)
+print(f'Status: {j[\"job_status\"]} ({j.get(\"execution_duration_ms\",0)}ms)')
+for o in j.get('object_details', []):
+    name = o['fully_qualified_source_object_name']
+    rows = (o.get('ingestion_metrics') or {}).get('output_row_count', 0)
+    print(f'  {name}: {o[\"loading_status\"]} ({rows} rows)')
+"
+```
 
 ## Job Logs
 

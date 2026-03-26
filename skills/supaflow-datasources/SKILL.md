@@ -80,6 +80,21 @@ supaflow datasources catalog <identifier> --refresh --output objects.json
 
 The exported `objects.json` can be edited (toggle `"selected": false` for objects to exclude) and passed to `pipelines create --objects`.
 
+**Catalog JSON field**: each object has `fully_qualified_name` (the key to use everywhere). To find a specific object:
+```bash
+supaflow datasources catalog <identifier> --json | python3 -c "
+import sys,json
+for o in json.load(sys.stdin)['data']:
+    if 'opportunity' in o['fully_qualified_name'].lower():
+        print(o['fully_qualified_name'])
+"
+```
+
+**Tip: To add a single object to an existing pipeline, use `pipelines schema add` directly instead of exporting the full catalog:**
+```bash
+supaflow pipelines schema add <pipeline> Opportunity --json
+```
+
 Export format:
 
 ```json

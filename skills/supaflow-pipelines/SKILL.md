@@ -164,14 +164,32 @@ supaflow jobs get <job-id> --json
 View and update which objects a pipeline syncs:
 
 ```bash
-# List selected objects
+# List selected objects (compact: object name, field counts, origin)
 supaflow pipelines schema list <identifier> --json
 
 # List all objects (including deselected)
 supaflow pipelines schema list <identifier> --all --json
 
-# Update selections from a JSON file
+# Add a single object by name (no file needed)
+supaflow pipelines schema add <identifier> Opportunity --json
+
+# Update selections from a JSON file (for bulk changes)
 supaflow pipelines schema select <identifier> --from objects.json --json
+```
+
+**Schema list JSON shape** (compact, no field arrays):
+```json
+{
+  "data": [
+    { "object": "Account", "selected": true, "total_fields": 72, "selected_fields": 72, "origin": "explicit" },
+    { "object": "Lead", "selected": true, "total_fields": 45, "selected_fields": 45, "origin": "explicit" }
+  ]
+}
+```
+
+**To add a single object to a pipeline**, use `schema add` -- no need to export/edit/reimport a file:
+```bash
+supaflow pipelines schema add my_pipeline Opportunity --json
 ```
 
 ## Editing a Pipeline
