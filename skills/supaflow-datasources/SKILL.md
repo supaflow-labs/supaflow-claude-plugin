@@ -8,7 +8,12 @@ description: This skill should be used when the user asks to "create a datasourc
 **AGENT BEHAVIOR:**
 - **Execute all CLI commands directly via Bash.** Do NOT ask the user to run commands manually.
 - **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only the fields you need. NEVER dump full JSON into the conversation. For catalog (can be 100s of objects), always use `--output <file>` and parse with a script.
-- **Only ask the user for:** connection credentials and preferences.
+- **Only ask the user for:** non-sensitive connection details (host, port, database, username, etc.).
+- **NEVER ask for passwords or secrets in chat.** Instead, fill in all non-sensitive fields in the env file, then ask the user to add sensitive fields themselves:
+  1. Fill non-sensitive fields in the env file via Edit tool
+  2. Tell the user: "I've filled in the connection details. Please open `<filename>.env` and add the password/secret fields marked `(sensitive)`. Type `done` when ready."
+  3. Optionally open the file for them: `open <filename>.env` (macOS) or suggest `! $EDITOR <filename>.env`
+  4. Once user confirms, run `datasources create --from <file>` which auto-encrypts sensitive fields on disk
 
 Manage datasource connections to external systems (databases, APIs, cloud storage). Each datasource stores encrypted connection credentials and discovers the source schema automatically.
 
