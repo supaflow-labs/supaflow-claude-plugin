@@ -50,7 +50,16 @@ List output follows the standard contract:
 supaflow jobs get <job-id> --json
 ```
 
-Job details include per-object metrics showing the three-stage pipeline execution:
+**`jobs get` is context-aware:** while a job is running, it returns only the lightweight status (~200 bytes). Once the job reaches a terminal state (completed, failed, etc.), it includes full per-object details with metrics. This means agents can poll `jobs get` repeatedly without wasting context.
+
+**Polling pattern for agents:**
+```bash
+# Poll until terminal -- each call is lightweight while running
+supaflow jobs get <job-id> --json
+# Check job_status: "running" = poll again, "completed"/"failed" = done (details included)
+```
+
+Job details (only in terminal state) include per-object metrics showing the three-stage pipeline execution:
 
 - **Ingestion**: Read records from source
 - **Staging**: Write records to temporary storage
