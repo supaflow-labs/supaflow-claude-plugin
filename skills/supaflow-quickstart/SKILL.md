@@ -9,7 +9,8 @@ description: This skill should be used when the user asks to "set up a Supaflow 
 - **Execute commands directly via Bash.** Do NOT ask the user to run commands manually.
 - **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only the fields you need. NEVER dump full JSON into the conversation. For large outputs (catalog, schema list, jobs), write to a file and parse with a script.
 - **Use `jobs status` for polling** (4 fields, ~100 bytes). Only use `jobs get` after the job reaches a terminal state.
-- **Only ask the user for:** credentials, workspace selection, and object selection preferences.
+- **NEVER ask for all credentials upfront.** Work step by step: authenticate first, then list existing datasources before asking for anything. The user likely already has datasources configured.
+- **Follow the numbered steps below IN ORDER.** Do not skip ahead, do not batch questions. Complete each step before moving to the next. Each step tells you exactly what to ask and when.
 
 Set up a complete data pipeline from authentication through scheduled syncs. This skill provides the correct order of operations -- individual command details are in the domain-specific skills (supaflow-auth, supaflow-datasources, supaflow-pipelines, supaflow-schedules, supaflow-jobs).
 
@@ -17,20 +18,27 @@ Set up a complete data pipeline from authentication through scheduled syncs. Thi
 
 Before starting, verify:
 1. CLI installed: run `supaflow --version`. If not found, run `npm install -g @getsupaflow/cli`
-2. User must provide: API key (from Settings > API Keys at `https://app.supa-flow.io`), source credentials, destination credentials
+
+Do NOT ask for API keys, credentials, or connection details yet. The steps below tell you exactly when to ask for each piece of information.
 
 ## Workflow Order
 
-The eight steps below must be followed in order. Each step depends on the previous one.
+The steps below must be followed in order. Each step depends on the previous one.
 
-### Step 1: Authenticate
+### Step 1: Check Auth Status
+
+**Run `auth status` FIRST** -- the user may already be authenticated from a previous session:
+
+```bash
+supaflow auth status --json
+```
+
+- If `authenticated: true` AND `workspace_id` is set: skip to Step 3.
+- If `authenticated: true` but no workspace: skip to Step 2.
+- If `authenticated: false`: ask the user for their API key (from Settings > API Keys at `https://app.supa-flow.io`), then:
 
 ```bash
 supaflow auth login --key <api-key>
-# Ask user for their API key, then pass it directly (non-interactive)
-
-supaflow auth status --json
-# Verify: authenticated = true
 ```
 
 Or set environment variables for non-interactive use:
@@ -49,46 +57,47 @@ supaflow workspaces select <name-or-api_name-or-uuid>
 
 Pass the workspace name, api_name, or UUID directly to avoid interactive prompts. Skip if `SUPAFLOW_WORKSPACE_ID` is already set.
 
-### Step 3: Create Source Datasource
+### Step 3: Check Existing Datasources
 
-First, check if a matching datasource already exists:
+**MANDATORY: Run this BEFORE asking the user for any credentials.** The user likely already has datasources configured.
 
 ```bash
-supaflow datasources list --json
+supaflow datasources list --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+if 'error' in d: print(d['error']['message']); sys.exit(1)
+for ds in d['data']:
+    print(f\"{ds['name']} | {ds['connector_type']} | api_name={ds['api_name']} | state={ds['state']}\")
+"
 ```
 
-If a suitable source datasource exists, skip to Step 5. Otherwise, create one:
+**Important:** List commands return `{ "data": [...] }` -- always access `['data']` to get the array.
+
+Review the list and tell the user what you found. For example:
+- "You have a SQL Server source called 'SQL Server' and a Snowflake destination called 'Snowflake'. We can use those. Do you want to use the existing ones or create new connections?"
+- "You have a Snowflake destination but no SQL Server source. I'll need to set up the source."
+- "No existing datasources. I'll set up both source and destination."
+
+**Only proceed to create datasources that are actually missing.** If both exist, skip to Step 5.
+
+### Step 4: Create Missing Datasources (if needed)
+
+Only for datasources that don't already exist from Step 3. For each one:
 
 ```bash
-# List available connector types
-supaflow connectors list --json
+# Scaffold env file
+supaflow datasources init --connector <TYPE> --name "<Name>" --json
+# Example: supaflow datasources init --connector sqlserver --name "SQL Server"
+# Example: supaflow datasources init --connector snowflake --name "Data Warehouse"
+```
 
-# Scaffold env file for the source
-supaflow datasources init --connector <TYPE> --name "<Source Name>" --json
-# Example: supaflow datasources init --connector postgres --name "Production DB"
+Then follow the supaflow-datasources skill for filling credentials (ask for credential files first, only ask non-sensitive fields in chat, never ask for passwords directly).
 
-# Fill in connection details in the generated .env file
-# Use ${VAR} references for secrets
-
-# Create the datasource (tests connection first)
-supaflow datasources create --from <source_name>.env --json
+```bash
+# Create (tests connection first)
+supaflow datasources create --from <name>.env --json
 ```
 
 Wait for the connection test to succeed. On failure, fix credentials in the env file and retry.
-
-### Step 4: Create Destination Datasource
-
-Check existing datasources first (from Step 3's list). If a suitable destination already exists, skip to Step 5. Otherwise, same process as Step 3:
-
-```bash
-supaflow datasources init --connector <TYPE> --name "<Destination Name>" --json
-# Example: supaflow datasources init --connector snowflake --name "Data Warehouse"
-
-# Fill in the env file
-supaflow datasources create --from <destination_name>.env --json
-```
-
-Common destination types: `SNOWFLAKE`, `S3`.
 
 ### Step 5: Create a Project
 
@@ -136,7 +145,14 @@ Optionally pass `--config pipeline-config.json` to override default settings (in
 supaflow pipelines sync <pipeline-identifier> --json
 ```
 
-Monitor the resulting job:
+The sync returns `{ "job_id": "...", "pipeline_id": "...", "status": "queued" }`. Poll the job with lightweight status:
+
+```bash
+supaflow jobs status <job-id> --json
+# Repeat until job_status is completed, failed, or cancelled
+```
+
+Once terminal, get full per-object details:
 
 ```bash
 supaflow jobs get <job-id> --json
@@ -168,9 +184,9 @@ Common cron patterns:
 ## Complete Example
 
 ```bash
-# 1. Auth
-supaflow auth login
-supaflow workspaces select
+# 1. Auth (non-interactive -- pass key and workspace name directly)
+supaflow auth login --key <api-key>
+supaflow workspaces select Dev
 
 # 2. Source
 supaflow datasources init --connector postgres --name "Production DB" --json
@@ -197,7 +213,8 @@ supaflow pipelines create \
 
 # 6. First sync
 supaflow pipelines sync production_to_warehouse --json
-# Monitor: supaflow jobs get <job-id> --json
+# Poll: supaflow jobs status <job-id> --json
+# Details: supaflow jobs get <job-id> --json
 
 # 7. Schedule
 supaflow schedules create \

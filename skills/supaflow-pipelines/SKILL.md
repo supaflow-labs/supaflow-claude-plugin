@@ -26,15 +26,22 @@ supaflow projects list --json
 supaflow projects create --name "My Project" --destination <datasource-identifier> --json
 ```
 
-The `--destination` flag accepts a datasource UUID or api_name. Project type defaults to `pipeline`.
+The `--destination` flag accepts a datasource UUID or api_name. Optional: `--type <type>` (values: `pipeline`, `ingestion`, `transformation`, `activation`; default: `pipeline`).
 
 ## Before Creating a Pipeline
 
 **Always check for existing pipelines between the same source and destination first.** Duplicate pipelines writing to the same destination schema cause merge conflicts and data corruption.
 
 ```bash
-supaflow pipelines list --json
+supaflow pipelines list --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+if 'error' in d: print(d['error']['message']); sys.exit(1)
+for p in d['data']:
+    print(f\"{p['name']} | {p['source']['connector_name']} -> {p['destination']['connector_name']} | api_name={p['api_name']} | state={p['state']}\")
+"
 ```
+
+**Important:** List commands return `{ "data": [...] }` -- always access `['data']` to get the array.
 
 Review the results for pipelines with the same source and destination. If one exists, inform the user:
 - What pipeline already exists (name, source, destination)
@@ -101,7 +108,7 @@ supaflow pipelines create \
   --json
 ```
 
-The `--source` and `--project` flags accept UUID or api_name. The destination is resolved from the project.
+The `--source` and `--project` flags accept UUID or api_name. The destination is resolved from the project. Optional: `--description <desc>` adds a human-readable description.
 
 ### Destination Schema (Pipeline Prefix)
 
@@ -174,6 +181,23 @@ Override defaults with a JSON file (only include fields to override):
 
 Note: `ACTIVATION` pipelines always enforce `BLOCK_ALL` schema evolution.
 
+### Pipeline Config vs Connector Properties
+
+**Pipeline config** (set via `--config`) controls how data moves: ingestion mode, load mode, schema evolution, error handling, sync frequency. These are the settings in the table above.
+
+**Connector properties** (set in the datasource env file) control how the connector connects and behaves at the source/destination level. These are NOT pipeline settings. Examples:
+- **SQL Server**: Change Tracking (`changeTrackingEnabled`), CDC mode
+- **S3/S3 Data Lake**: file format (Parquet, Iceberg, CSV), Glue catalog, bucket path
+- **Snowflake**: warehouse, role, authentication method, database/schema
+- **PostgreSQL**: replication slot, publication name, SSL mode
+
+If the user asks about Change Tracking, Iceberg, Parquet, Glue, or other connector-specific features, inspect the datasource config with `datasources get <identifier> --json` and look at the `configs` object. Do NOT look for these in pipeline config.
+
+For connector setup guides and available properties, fetch the Supaflow docs:
+```bash
+curl -s https://www.supa-flow.io/docs/llms/docs.txt
+```
+
 ## Running a Pipeline
 
 ```bash
@@ -187,9 +211,19 @@ supaflow pipelines sync <identifier> --full-resync --json
 supaflow pipelines sync <identifier> --full-resync --reset-target --json
 ```
 
-The sync command returns a job ID. Monitor with:
+The sync command returns:
+
+```json
+{ "job_id": "13cfe303-...", "pipeline_id": "3d72f887-...", "status": "queued" }
+```
+
+Monitor with lightweight polling, then get full details after completion:
 
 ```bash
+# Poll (lightweight)
+supaflow jobs status <job-id> --json
+
+# Full details after terminal state
 supaflow jobs get <job-id> --json
 ```
 
@@ -234,7 +268,12 @@ supaflow pipelines edit <identifier> --config pipeline-config.json --json
 
 # Update name
 supaflow pipelines edit <identifier> --name "New Name" --json
+
+# Update description
+supaflow pipelines edit <identifier> --description "Updated description" --json
 ```
+
+Multiple flags can be combined in a single edit command.
 
 ## State Management
 
@@ -250,13 +289,23 @@ Disabled pipelines cannot be synced until re-enabled.
 ```bash
 supaflow pipelines list --json
 supaflow pipelines list --state active --json
+
+# Sorting and pagination
+supaflow pipelines list --sort last_sync_at --order desc --json
+supaflow pipelines list --limit 10 --offset 0 --json
+
 supaflow pipelines get <identifier> --json
 ```
+
+`pipelines get` includes the full `configs` object with all pipeline settings (ingestion_mode, load_mode, schema_evolution_mode, pipeline_prefix, etc.).
 
 ## Deletion
 
 ```bash
 supaflow pipelines delete <identifier> --json
+
+# Skip confirmation prompt (for agent workflows)
+supaflow pipelines delete <identifier> --yes --json
 ```
 
 ## Identifier Resolution
@@ -281,8 +330,12 @@ supaflow pipelines create --name "My Pipeline" --source my_postgres --project an
 ### Trigger sync and monitor
 
 ```bash
-JOB=$(supaflow pipelines sync my_pipeline --json)
-# Extract job ID from output, then:
+supaflow pipelines sync my_pipeline --json
+# Returns: { "job_id": "...", "pipeline_id": "...", "status": "queued" }
+
+# Poll with lightweight status
+supaflow jobs status <job-id> --json
+# Full details after terminal state
 supaflow jobs get <job-id> --json
 ```
 

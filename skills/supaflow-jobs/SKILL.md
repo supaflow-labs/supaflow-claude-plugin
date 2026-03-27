@@ -37,10 +37,12 @@ List output follows the standard contract:
   "data": [
     {
       "id": "13cfe303-c67e-...",
-      "type": "pipeline_run",
-      "status": "completed",
-      "duration": "58s",
-      "created_at": "2026-03-25T10:00:00Z"
+      "job_type": "pipeline_run",
+      "job_status": "completed",
+      "reference_id": "3d72f887-...",
+      "reference_type": "pipeline",
+      "created_at": "2026-03-25T10:00:00Z",
+      "updated_at": "2026-03-25T10:01:00Z"
     }
   ],
   "total": 5,
@@ -48,6 +50,8 @@ List output follows the standard contract:
   "offset": 0
 }
 ```
+
+Available filters: `status` (by job_status), `pipeline` (by pipeline UUID), `type` (by job_type). Supports `--limit <n>` (default 25) and `--offset <n>` for pagination.
 
 ## Viewing Job Details
 
@@ -59,16 +63,17 @@ supaflow jobs get <job-id> --json
 
 **Polling pattern for agents:**
 ```bash
-# Use `jobs status` for polling -- returns only 4 fields (~100 bytes)
+# Use `jobs status` for polling -- 4 fields, lightweight while job is running
 supaflow jobs status <job-id> --json
-# Returns: { "id": "...", "job_status": "running", "status_message": "...", "job_response": null }
+# While running: { "id": "...", "job_status": "running", "status_message": "...", "job_response": null }
+# After terminal: { "id": "...", "job_status": "completed", "status_message": "...", "job_response": { "total_objects": 2, ... } }
 
-# Once terminal (completed/failed), use `jobs get` for full details
+# Once terminal (completed/failed), use `jobs get` for per-object breakdown
 supaflow jobs get <job-id> --json
 # Returns: job header + object_details with per-object metrics
 ```
 
-**Use `jobs status` (not `jobs get`) for polling.** It returns 4 fields vs 14+ fields. Use `jobs get` only when you need the final result.
+**Use `jobs status` (not `jobs get`) for polling.** While a job is running, `job_response` is null and the payload is ~100 bytes. After terminal state, `job_response` includes summary counts (total_objects, total_rows_source, total_rows_destination, total_failed, total_skipped). Use `jobs get` only when you need per-object stage metrics.
 
 Job details (only in terminal state) include per-object metrics showing the three-stage pipeline execution:
 
@@ -101,7 +106,15 @@ public.tasks              completed   completed   completed   3
 - `object_details[].ingestion_status`, `staging_status`, `loading_status`: per-stage status
 - `object_details[].ingestion_metrics.output_row_count`: rows read from source
 
-Note: `jobs get` does not include `job_parameters` (encrypted credentials). Use `jobs logs` for the job response payload.
+- `job_response`: summary counts (total_objects, total_rows_source, total_rows_destination, total_failed, total_skipped)
+
+Note: `jobs get` does not include `job_parameters` (encrypted credentials).
+
+**`jobs logs` JSON shape** (different field names from `jobs get`):
+```json
+{ "id": "...", "status": "completed", "message": null, "response": { ... } }
+```
+Note: `jobs logs` uses `status`/`message`/`response`, not `job_status`/`status_message`/`job_response`.
 
 **Parsing tip for agents** -- to extract object names and status from JSON:
 ```bash
@@ -142,8 +155,8 @@ Logs contain detailed information about errors, warnings, and execution progress
 | Type | Created by |
 |------|-----------|
 | `pipeline_run` | `pipelines sync` |
-| `connection_test` | `datasources create`, `datasources test` |
-| `schema_refresh` | `datasources refresh`, `datasources catalog --refresh` |
+| `datasource_test` | `datasources create`, `datasources test` |
+| `datasource_schema_refresh` | `datasources refresh`, `datasources catalog --refresh` |
 
 ## Diagnosing Failures
 
@@ -183,11 +196,14 @@ When a job fails, follow this sequence:
 ```bash
 # Start the sync
 supaflow pipelines sync my_pipeline --json
-# Extract job ID from output
+# Returns: { "job_id": "...", "pipeline_id": "...", "status": "queued" }
 
-# Check status
+# Poll with lightweight status
+supaflow jobs status <job-id> --json
+# Repeat until job_status is completed, failed, or cancelled
+
+# Get full details after terminal state
 supaflow jobs get <job-id> --json
-# Repeat until status is completed, failed, or cancelled
 ```
 
 ### Find failed jobs in the last batch

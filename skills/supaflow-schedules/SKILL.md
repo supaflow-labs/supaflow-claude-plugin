@@ -35,7 +35,7 @@ Required flags:
   - `--orchestration <identifier>`: Target an orchestration (UUID or api_name)
 
 Optional flags:
-- `--timezone`: Display timezone (all execution is in UTC; timezone is display-only)
+- `--timezone`: Display timezone (default: `UTC`; all execution is in UTC; timezone is display-only)
 - `--description`: Human-readable description
 
 Providing more than one target flag is an error.
@@ -102,7 +102,12 @@ Trigger an immediate execution of a schedule (runs the associated target now):
 supaflow schedules run <name> --json
 ```
 
-This creates a job. Monitor with `supaflow jobs get <job-id> --json`.
+Returns: `{ "id": "<schedule-id>", "name": "...", "status": "triggered" }`. Note: the `id` is the **schedule** ID, not a job ID. To find the resulting job, query by the schedule's target:
+
+```bash
+supaflow jobs list --filter pipeline=<target-pipeline-uuid> --json
+# Look for the most recent job
+```
 
 ## Execution History
 
@@ -135,13 +140,17 @@ supaflow schedules delete <name> --json
 
 ## Identifier Resolution
 
-Schedules resolve by **name** (not api_name), since schedule names are unique per workspace:
+Schedules resolve by **name** or **UUID** (not api_name), since schedule names are unique per workspace:
 
 ```bash
+# By name
 supaflow schedules edit "Hourly Sales Sync" --cron "0 */2 * * *" --json
+
+# By UUID
+supaflow schedules edit 18f28fc7-11d2-44d6-... --cron "0 */2 * * *" --json
 ```
 
-This differs from datasources and pipelines, which resolve by api_name.
+This differs from datasources and pipelines, which resolve by api_name or UUID.
 
 ## Common Agent Patterns
 

@@ -8,7 +8,9 @@ description: This skill should be used when the user asks to "create a datasourc
 **AGENT BEHAVIOR:**
 - **Execute all CLI commands directly via Bash.** Do NOT ask the user to run commands manually.
 - **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only the fields you need. NEVER dump full JSON into the conversation. For catalog (can be 100s of objects), always use `--output <file>` and parse with a script.
+- **ALWAYS run `datasources list` FIRST** before asking for any credentials or creating anything. Tell the user what datasources already exist and ask which to reuse. Only create what's missing.
 - **Before asking for connection details, ask the user if they already have credentials in a file** (e.g., `.env`, `config.json`, `credentials.yaml`). If yes, read the file to extract values -- this is much faster than typing each field. If no, ask for non-sensitive fields in chat.
+- **NEVER ask for all credentials upfront.** Work step by step: scaffold the env file first, read the annotations to learn which fields are required/sensitive, then ask only for what's needed.
 - **NEVER ask for passwords or secrets in chat.** The generated env file marks each property with annotations in comments: `(required)`, `(optional)`, `(sensitive)`. Read the env file to identify which fields are sensitive vs non-sensitive. Then:
   1. Ask: "Do you have connection credentials in a file already (e.g., .env, config file)? If so, share the path. Otherwise I'll ask for the details."
   2. If user has a file: read it, extract matching property values, fill into the env file
@@ -49,17 +51,28 @@ This file contains setup guides for every connector (PostgreSQL, Snowflake, S3, 
 
 If the user hasn't set up the source/destination system yet, fetch the docs and help them through the setup before creating the datasource in Supaflow.
 
-## Before Creating a Datasource
+**Connector properties vs pipeline config:** Features like Change Tracking (SQL Server), Iceberg/Parquet/Glue (S3), CDC mode (PostgreSQL), and authentication method are **connector properties** -- they live in the datasource config, NOT in the pipeline. Use `datasources get <id> --json` to inspect them. Pipeline config only controls ingestion mode, load mode, schema evolution, etc.
 
-**Always check if a matching datasource already exists first.** The user may already have a connection to the system they want to use.
+## Before Creating a Datasource (MANDATORY)
+
+**ALWAYS run `datasources list` FIRST. This is not optional.** Do this before asking the user for ANY connection details.
 
 ```bash
-supaflow datasources list --json
+supaflow datasources list --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+if 'error' in d: print(d['error']['message']); sys.exit(1)
+for ds in d['data']:
+    print(f\"{ds['name']} | {ds['connector_type']} | api_name={ds['api_name']} | state={ds['state']}\")
+"
 ```
 
-Look for an existing datasource with the same connector type and ask the user before creating a duplicate. For example, if the user says "connect to Salesforce" and there is already a Salesforce datasource, ask: "You already have a Salesforce datasource named 'Salesforce Prod'. Do you want to use that one, or create a new connection?"
+**Important:** List commands return `{ "data": [...] }` -- always access `['data']` to get the array.
 
-Only proceed with creation if no suitable datasource exists or the user explicitly wants a new one.
+Review the list and tell the user what already exists. For example:
+- "You already have a SQL Server source called 'SQL Server' (api_name: sql_server_qdvbd4). Want to use it or create a new one?"
+- "You have 3 Snowflake destinations. Which one should I use for this pipeline?"
+
+**Only proceed with creation if no suitable datasource exists or the user explicitly wants a new one.** Do NOT ask for credentials before checking.
 
 ## Datasource Creation (Two-Step Process)
 
@@ -69,9 +82,25 @@ Generate a connector-specific env file with all available properties:
 
 ```bash
 supaflow datasources init --connector <TYPE> --name "<Display Name>" --json
+
+# Optionally specify the output file path
+supaflow datasources init --connector <TYPE> --name "<Display Name>" --output my_source.env --json
 ```
 
-This creates a file named after the api_name (e.g., `my_postgres.env`). The file contains annotated properties grouped by category, with defaults pre-filled.
+This creates a file named after the api_name (e.g., `my_postgres.env`) unless `--output` is specified. The file contains annotated properties grouped by category, with defaults pre-filled.
+
+Init JSON output:
+```json
+{
+  "file": "my_postgres.env",
+  "name": "My Postgres",
+  "api_name": "my_postgres",
+  "connector": "POSTGRES",
+  "connector_version": "1.0.46-SNAPSHOT",
+  "required_properties": 5,
+  "optional_properties": 10
+}
+```
 
 Available connector types can be listed with:
 
@@ -123,8 +152,9 @@ The exported `objects.json` can be edited (toggle `"selected": false` for object
 **Catalog JSON field**: each object has `fully_qualified_name` (the key to use everywhere). To find a specific object:
 ```bash
 supaflow datasources catalog <identifier> --json | python3 -c "
-import sys,json
-for o in json.load(sys.stdin)['data']:
+import sys,json; d=json.load(sys.stdin)
+if 'error' in d: print(d['error']['message']); sys.exit(1)
+for o in d['data']:
     if 'opportunity' in o['fully_qualified_name'].lower():
         print(o['fully_qualified_name'])
 "
@@ -152,14 +182,35 @@ Export format:
 ## Listing and Viewing Datasources
 
 ```bash
-# List all datasources
+# List all datasources (no configs -- lightweight)
 supaflow datasources list --json
 
-# View details by UUID or api_name
+# View details by UUID or api_name (includes configs)
 supaflow datasources get <identifier> --json
 ```
 
 List output follows the standard contract: `{ "data": [...], "total": N, "limit": N, "offset": N }`.
+
+**`datasources get` includes `configs`** -- the full connector configuration. Use this to inspect how a datasource is configured (e.g., whether SQL Server uses Change Tracking, what auth method is used, which database/host is connected):
+
+```json
+{
+  "id": "...",
+  "name": "SQL Server",
+  "connector_type": "SQLSERVER",
+  "configs": {
+    "host": "10.0.1.50",
+    "port": "1433",
+    "database": "SalesDB",
+    "username": "supaflow_reader",
+    "password": { "v": 1, "fp": "abc...", "data": "..." },
+    "changeTrackingEnabled": "true",
+    "sslMode": "require"
+  }
+}
+```
+
+Sensitive values are stored as **encrypted envelopes** (`{ "v", "fp", "data" }`). These are safe to return -- only the pipeline agent has the private key. When editing, send unchanged envelopes back as-is; only replace values that actually changed.
 
 ## Testing a Connection
 
@@ -183,7 +234,18 @@ supaflow datasources edit <identifier> --from <file>.env --json
 supaflow datasources edit <identifier> --from <file>.env --skip-test --json
 ```
 
-Only the fields present in the env file are updated. Omitted fields retain their current values.
+**Important:** The edit command replaces the **entire** configs object, not individual fields. To safely edit, export the current config as an env file first:
+
+```bash
+# Export current config as env file (encrypted values preserved as enc: format)
+supaflow datasources get <identifier> --output current.env
+
+# Edit only the values that need to change (encrypted values pass through unchanged)
+# Then submit:
+supaflow datasources edit <identifier> --from current.env --json
+```
+
+The `--output` flag on `datasources get` produces a complete env file with all properties, annotations, and current values pre-filled. Encrypted sensitive values are encoded as `enc:` prefixed strings that can be sent back as-is.
 
 ## Schema Refresh
 

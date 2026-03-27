@@ -7,6 +7,7 @@ description: This skill should be used when the user asks to "authenticate with 
 
 **AGENT BEHAVIOR:**
 - **Execute all CLI commands directly via Bash.** Do NOT ask the user to run commands manually.
+- **ALWAYS check `auth status --json` FIRST** before asking for an API key. The user may already be authenticated from a previous session. Only ask for a key if `authenticated: false`.
 - **Auth login:** Ask user for their API key, then run `supaflow auth login --key <key>` (non-interactive). Do NOT use the interactive prompt.
 - **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only the fields you need. NEVER dump full JSON responses into the conversation.
 
@@ -77,6 +78,16 @@ If the user already has an API key, skip straight to authentication below.
 
 ## Authentication Flow
 
+**Step 1: Check if already authenticated** (credentials persist in `~/.supaflow/config.json`):
+
+```bash
+supaflow auth status --json
+```
+
+If `authenticated: true` and `workspace_id` is present, you're done -- skip login and workspace selection.
+
+**Step 2: Login (only if not authenticated):**
+
 ```bash
 # Non-interactive (for agents -- pass key directly)
 supaflow auth login --key <api-key>
@@ -85,16 +96,16 @@ supaflow auth login --key <api-key>
 supaflow auth login
 ```
 
-Verify authentication:
-
-```bash
-supaflow auth status --json
-```
-
 Successful output:
 
 ```json
-{ "authenticated": true, "source": "config" }
+{
+  "authenticated": true,
+  "source": "config",
+  "workspace_id": "0ca8d04f-...",
+  "workspace_name": "Dev",
+  "workspace_source": "config"
+}
 ```
 
 The API key is stored in `~/.supaflow/config.json` with user-only file permissions (mode 0600). To avoid storing the key on disk, set `SUPAFLOW_API_KEY` as an environment variable instead.
@@ -110,7 +121,7 @@ supaflow workspaces list --json
 ```json
 {
   "data": [
-    { "id": "uuid-here", "name": "My Workspace" }
+    { "id": "uuid-here", "name": "My Workspace", "api_name": "my_workspace", "environment": "dev", "user_access_level": "owner" }
   ],
   "total": 1,
   "limit": 25,
@@ -199,6 +210,14 @@ All commands with `--json` follow this contract:
 - **Get/create/edit commands**: the raw object
 - **Errors**: `{ "error": { "code": "ERROR_CODE", "message": "..." } }` with non-zero exit code
 
+**When parsing JSON with python3, ALWAYS check for errors first:**
+```python
+d = json.load(sys.stdin)
+if 'error' in d: print(d['error']['message']); sys.exit(1)
+# Then access d['data'] for list commands, or d directly for get/create
+```
+Errors and success use **different shapes** -- accessing `d['data']` on an error response will crash.
+
 Error codes and exit codes:
 
 | Code | Exit | Meaning |
@@ -241,4 +260,4 @@ After authenticating, list available connector types:
 supaflow connectors list --json
 ```
 
-This returns connector type identifiers (used in `--connector` flag for datasource creation), display names, and versions.
+Returns: `{ "data": [{ "type": "POSTGRES", "name": "PostgreSQL", "version": "1.0.46-SNAPSHOT", "capabilities": ["REPLICATION_SOURCE", "REPLICATION_DESTINATION"] }], ... }`. The `type` field is used in `--connector` flag for datasource creation. The `capabilities` array shows what the connector can do (source, destination, reverse ETL, etc.).
