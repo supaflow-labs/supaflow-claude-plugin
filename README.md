@@ -19,23 +19,31 @@ For local development, use `--plugin-dir` instead:
 claude --plugin-dir /path/to/supaflow-claude-plugin
 ```
 
-On first session after install, a setup hook checks whether the Supaflow CLI is installed and authenticated. If anything is missing, Claude will guide you through the setup automatically.
+On first session after install, a setup hook verifies:
+- Node.js 18+ is installed
+- Supaflow CLI is installed and meets the minimum version (v0.1.5+)
+- CLI is authenticated with a valid API key
+- A workspace is selected
+
+If anything is missing, Claude will guide you through the setup automatically.
 
 ### Manual Setup (if needed)
 
-The plugin requires Node.js 18+, the Supaflow CLI, and a Supaflow account:
+The plugin requires Node.js 18+, Supaflow CLI v0.1.5+, and a Supaflow account:
 
 ```bash
 # 1. Install Node.js 18+ (skip if already installed)
 brew install node          # macOS
 # See https://nodejs.org for other platforms
 
-# 2. Install the Supaflow CLI
+# 2. Install the Supaflow CLI (v0.1.5 or later)
 npm install -g @getsupaflow/cli
-supaflow --version
+supaflow --version         # must be 0.1.5+
 
 # 3. Authenticate (requires an API key from https://app.supa-flow.io > Settings > API Keys)
 supaflow auth login
+
+# 4. Select a workspace
 supaflow workspaces select
 ```
 
