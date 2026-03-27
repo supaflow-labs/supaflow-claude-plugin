@@ -102,12 +102,12 @@ Trigger an immediate execution of a schedule (runs the associated target now):
 supaflow schedules run <name> --json
 ```
 
-Returns: `{ "id": "<schedule-id>", "name": "...", "status": "triggered" }`. Note: the `id` is the **schedule** ID, not a job ID. To find the resulting job, query by the schedule's target:
+Returns: `{ "id": "<schedule-id>", "name": "...", "status": "triggered" }`. Note: the `id` is the **schedule** ID, not a job ID. To find the resulting job:
 
-```bash
-supaflow jobs list --filter pipeline=<target-pipeline-uuid> --json
-# Look for the most recent job
-```
+- **Pipeline schedules**: `supaflow jobs list --filter pipeline=<target-pipeline-uuid> --json`
+- **Task/orchestration schedules**: `supaflow schedules history <name> --json` (shows execution results directly)
+
+Use `schedules history` as the universal approach -- it works for all target types.
 
 ## Execution History
 
