@@ -38,7 +38,7 @@ brew install node          # macOS
 
 # 2. Install the Supaflow CLI (v0.1.7 or later)
 npm install -g @getsupaflow/cli
-supaflow --version         # must be 0.1.6+
+supaflow --version         # must be 0.1.7+
 
 # 3. Authenticate (requires an API key from https://app.supa-flow.io > Settings > API Keys)
 supaflow auth login
