@@ -172,7 +172,7 @@ for o in d['data']:
 supaflow pipelines schema add <pipeline> Opportunity --json
 ```
 
-Export format:
+**Export format** (the `--output` file is a JSON array, NOT wrapped in `{ "data": [...] }`):
 
 ```json
 [
@@ -180,6 +180,29 @@ Export format:
   { "fully_qualified_name": "public.contacts", "selected": true, "fields": null },
   { "fully_qualified_name": "public.internal_logs", "selected": false, "fields": null }
 ]
+```
+
+Each object has exactly 3 keys: `fully_qualified_name`, `selected`, `fields`. There is no `name` or `namespace` field. To list objects:
+```bash
+python3 -c "
+import json
+objs = json.load(open('/tmp/objects.json'))
+for o in objs:
+    print(f\"{o['fully_qualified_name']} | selected={o['selected']}\")
+"
+```
+
+To deselect specific objects (e.g., system tables):
+```bash
+python3 -c "
+import json
+objs = json.load(open('/tmp/objects.json'))
+skip = {'MSchange_tracking_history', 'sys.trace_xe_action_map'}
+for o in objs:
+    if any(s in o['fully_qualified_name'] for s in skip):
+        o['selected'] = False
+json.dump(objs, open('/tmp/objects.json','w'), indent=2)
+"
 ```
 
 - `selected: true` includes the object in the pipeline

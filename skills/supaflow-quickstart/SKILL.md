@@ -164,9 +164,20 @@ supaflow datasources create --from <name>.env --json
 
 Wait for the connection test to succeed. On failure, fix credentials in the env file and retry.
 
-### Step 5: Create a Project
+### Step 5: Find or Create a Project
 
-A project ties pipelines to a destination warehouse:
+A project ties pipelines to a destination warehouse. **Check if one already exists for the destination first:**
+
+```bash
+supaflow projects list --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+if 'error' in d: print(d['error']['message']); sys.exit(1)
+for p in d['data']:
+    print(f\"{p['name']} | warehouse_id={p.get('warehouse_datasource_id','?')} | dest={p.get('warehouse_name','?')} | pipelines={p.get('pipeline_count',0)} | api_name={p['api_name']}\")
+"
+```
+
+**Match by `warehouse_datasource_id`** (not `warehouse_name`). Compare against the destination datasource's `id` from Step 3. If a project matches, use its `api_name`. Only create a new project if none matches:
 
 ```bash
 supaflow projects create \
@@ -202,7 +213,13 @@ supaflow pipelines create \
   --json
 ```
 
-Optionally pass `--config pipeline-config.json` to override default settings (ingestion mode, load mode, etc.). If `--objects` is omitted, all discovered objects are selected.
+**Before running create, read source and destination capabilities** (from `datasources get` -- see the supaflow-pipelines skill for full details) and **present only valid options to the user**. Show the capability defaults and wait for their response:
+- Destination schema prefix (auto-generated, CANNOT be changed later)
+- Ingestion mode (from **source** capabilities `supported_values`)
+- Load mode (from **destination** capabilities `supported_values`)
+- Schema evolution (from **destination** capabilities `supported_values`)
+
+If the user wants non-default settings, create `--config pipeline-config.json` with their overrides. If `--objects` is omitted, all discovered objects are selected.
 
 ### Step 7: Run the First Sync
 

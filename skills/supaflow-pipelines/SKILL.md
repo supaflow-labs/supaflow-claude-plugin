@@ -28,6 +28,20 @@ supaflow projects create --name "My Project" --destination <datasource-identifie
 
 The `--destination` flag accepts a datasource UUID or api_name. Optional: `--type <type>` (values: `pipeline`, `ingestion`, `transformation`, `activation`; default: `pipeline`).
 
+**Only two project commands exist:** `list` and `create`. There is no `projects get`. Use `projects list` to find existing projects -- it returns `warehouse_datasource_id`, `warehouse_name`, `warehouse_connector_name`, and `pipeline_count`.
+
+**Before creating a project, check if one already exists for the destination:**
+```bash
+supaflow projects list --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+if 'error' in d: print(d['error']['message']); sys.exit(1)
+for p in d['data']:
+    print(f\"{p['name']} | warehouse_id={p.get('warehouse_datasource_id','?')} | dest={p.get('warehouse_name','?')} ({p.get('warehouse_connector_name','?')}) | pipelines={p.get('pipeline_count',0)} | api_name={p['api_name']}\")
+"
+```
+
+**Match projects by `warehouse_datasource_id`** (not `warehouse_name` which is a display label and may not be unique). Compare against the destination datasource's `id` from `datasources list`. If a project already exists for that destination ID, use it. Only create a new project if none matches.
+
 ## Before Creating a Pipeline
 
 **Always check for existing pipelines between the same source and destination first.** Duplicate pipelines writing to the same destination schema cause merge conflicts and data corruption.
@@ -53,28 +67,71 @@ Only create a new pipeline if no existing pipeline covers the same source-destin
 
 ## Creating a Pipeline
 
-**Before running `pipelines create`, ask the user about these key settings.** Present the options with defaults highlighted. If the user says "just use defaults", skip the config file.
+**MANDATORY: Before running `pipelines create`, read source and destination capabilities, then present only valid options to the user.** Do NOT silently use defaults. Do NOT show options the connectors don't support.
+
+### Reading Connector Capabilities
+
+`datasources get` returns a `capabilities` object on each datasource. Use it to determine which pipeline options are valid:
+
+```bash
+# Get source capabilities (controls ingestion_mode)
+supaflow datasources get <source> --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+caps = d.get('capabilities', {})
+for k in ['ingestion_mode','perform_hard_deletes','checksum_validation_level']:
+    v = caps.get(k)
+    if v: print(f'{k}: supported={v.get(\"supported_values\",v.get(\"supported\"))}, default={v.get(\"default_value\")}')
+"
+
+# Get destination capabilities (controls load_mode, schema_evolution_mode, namespace_rules, etc.)
+supaflow datasources get <destination> --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+caps = d.get('capabilities', {})
+for k in ['load_mode','schema_evolution_mode','namespace_rules','destination_table_handling','load_optimization_mode','perform_hard_deletes']:
+    v = caps.get(k)
+    if v: print(f'{k}: supported={v.get(\"supported_values\",v.get(\"supported\"))}, default={v.get(\"default_value\")}')
+"
+```
+
+### Capability Ownership Rules
+
+Each setting is controlled by either the source, destination, or both:
+
+| Setting | Controlled By | Resolution |
+|---------|--------------|------------|
+| `ingestion_mode` | **source** | Only show values from source capabilities |
+| `load_mode` | **destination** | Only show values from destination capabilities |
+| `schema_evolution_mode` | **destination** | Only show values from destination capabilities |
+| `namespace_rules` | **destination** | Only show values from destination capabilities |
+| `destination_table_handling` | **destination** | Only show values from destination capabilities |
+| `load_optimization_mode` | **destination** | Only show values from destination capabilities |
+| `checksum_validation_level` | **both** | Intersection of source + destination values |
+| `perform_hard_deletes` | **both** | Only if BOTH source AND destination support it |
+
+For "both" settings: `enabled` requires AND of both connectors, `supported_values` uses intersection. Only highlight a default if it appears in the intersection -- if it doesn't, present the intersection without a pre-selected default and ask the user to choose.
+
+### Presenting Options to the User
+
+After reading capabilities, present a summary showing only valid options with defaults highlighted. Example:
+
+```
+Pipeline configuration (defaults shown, change any you want):
+- Destination schema prefix: sqlserver (auto-generated, CANNOT be changed later)
+- Ingestion mode: HISTORICAL_PLUS_INCREMENTAL [INCREMENTAL, HISTORICAL also available]
+- Load mode: MERGE [APPEND, TRUNCATE_AND_LOAD, OVERWRITE also available]
+- Schema evolution: ALLOW_ALL [BLOCK_ALL, COLUMN_LEVEL_ONLY also available]
+
+Reply with any changes, or "defaults are fine" to proceed.
+```
+
+**Important:** The destination schema prefix CANNOT be changed after pipeline creation. Always highlight this.
+
+If the user says "just use defaults" or similar, skip the config file. Otherwise, create a config JSON with their overrides.
 
 **Pipeline prefix** (destination schema name):
 - Auto-generated from source type (e.g., `sqlserver`, `hubspot`)
-- Ask: "Your data will be written to the `<source_type>` schema in Snowflake. Want to use this or a custom prefix?"
+- Ask: "Your data will be written to the `<source_type>` schema in the destination. Want to use this or a custom prefix?"
 - If custom, set `pipeline_prefix` and `is_custom_prefix: true` in config
-
-**Ingestion Mode** -- how data is synced from source:
-- `HISTORICAL_PLUS_INCREMENTAL` (default) -- initial full sync, then only changes
-- `HISTORICAL` -- full sync every time (higher cost)
-- `INCREMENTAL` -- only new/changed data (skips initial full load)
-
-**Load Mode** -- how data is loaded into destination:
-- `MERGE` (default) -- insert new, update existing (needs primary key)
-- `APPEND` -- add new records only (good for logs/events)
-- `TRUNCATE_AND_LOAD` -- delete all then reload (good for staging tables)
-- `OVERWRITE` -- drop and recreate tables
-
-**Schema Evolution** -- how source schema changes propagate:
-- `ALLOW_ALL` (default) -- automatically propagate all changes
-- `BLOCK_ALL` -- prevent any modifications
-- `COLUMN_LEVEL_ONLY` -- allow column additions only
 
 If the user wants non-default settings, create a config file:
 ```bash
