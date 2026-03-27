@@ -141,89 +141,67 @@ This tests the connection first and only saves on success. The test may take up 
 
 ## Browsing the Catalog
 
-After creation, the platform discovers the source schema (tables, objects). Browse and export:
+After creation, the platform discovers the source schema (tables, objects).
+
+### Recommended workflow: export to file, read file, summarize for user
+
+**Always use `--output` to write the catalog to a file.** Do NOT try to parse object names from the `--json` stdout -- stdout only returns metadata. The objects are in the file.
 
 ```bash
-# List discovered objects (returns list in standard { "data": [...] } format)
-supaflow datasources catalog <identifier> --json
+# Step 1: Export catalog to file
+supaflow datasources catalog <identifier> --output /tmp/objects.json --json
+# stdout returns: { "file": "/tmp/objects.json", "datasource": "SQL Server", "objects": 7 }
+# The "objects" field is an INTEGER COUNT, not a list. The actual objects are in the FILE.
 
-# Export as JSON file for pipeline creation
-supaflow datasources catalog <identifier> --output objects.json --json
-```
-
-**Important:** When using `--output`, the `--json` stdout returns metadata about the export, NOT the objects themselves:
-```json
-{ "file": "objects.json", "datasource": "SQL Server", "objects": 7 }
-```
-The `objects` field is an **integer count**, not a list. The actual object array is in the **file**. Read the file to work with objects:
-```bash
+# Step 2: Read the file and summarize for the user (catalogs can have 100s of objects)
 python3 -c "
 import json
 objs = json.load(open('/tmp/objects.json'))
+print(f'Found {len(objs)} objects:')
 for o in objs:
-    print(f\"{o['fully_qualified_name']} | selected={o['selected']}\")
+    print(f\"  {o['fully_qualified_name']}\")
 "
-```
 
-To trigger fresh discovery first:
-```bash
-supaflow datasources catalog <identifier> --refresh --output objects.json --json
-```
-
-The exported `objects.json` can be edited (toggle `"selected": false` for objects to exclude) and passed to `pipelines create --objects`.
-
-**Catalog JSON field**: each object has `fully_qualified_name` (the key to use everywhere). To find a specific object:
-```bash
-supaflow datasources catalog <identifier> --json | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print(d['error']['message']); sys.exit(1)
-for o in d['data']:
-    if 'opportunity' in o['fully_qualified_name'].lower():
-        print(o['fully_qualified_name'])
+# Step 3: Ask user which objects to exclude, then deselect them
+python3 -c "
+import json
+objs = json.load(open('/tmp/objects.json'))
+skip = {'MSchange_tracking_history', 'sys.trace_xe_action_map', 'sys.trace_xe_event_map'}
+for o in objs:
+    if any(s in o['fully_qualified_name'] for s in skip):
+        o['selected'] = False
+json.dump(objs, open('/tmp/objects.json','w'), indent=2)
+print('Updated selections:')
+for o in objs:
+    print(f\"  {o['fully_qualified_name']} -> {'SELECTED' if o['selected'] else 'excluded'}\")
 "
+
+# Step 4: Pass to pipeline create
+supaflow pipelines create ... --objects /tmp/objects.json --json
 ```
+
+To trigger fresh discovery before export:
+```bash
+supaflow datasources catalog <identifier> --refresh --output /tmp/objects.json --json
+```
+
+**File format** (JSON array, NOT wrapped in `{ "data": [...] }`):
+```json
+[
+  { "fully_qualified_name": "public.accounts", "selected": true, "fields": null },
+  { "fully_qualified_name": "public.contacts", "selected": true, "fields": null }
+]
+```
+
+Each object has exactly 3 keys: `fully_qualified_name`, `selected`, `fields`. There is no `name` or `namespace` field.
+- `selected: true` includes the object in the pipeline
+- `selected: false` excludes it
+- `fields: null` syncs all fields (recommended)
 
 **Tip: To add a single object to an existing pipeline, use `pipelines schema add` directly instead of exporting the full catalog:**
 ```bash
 supaflow pipelines schema add <pipeline> Opportunity --json
 ```
-
-**Export format** (the `--output` file is a JSON array, NOT wrapped in `{ "data": [...] }`):
-
-```json
-[
-  { "fully_qualified_name": "public.accounts", "selected": true, "fields": null },
-  { "fully_qualified_name": "public.contacts", "selected": true, "fields": null },
-  { "fully_qualified_name": "public.internal_logs", "selected": false, "fields": null }
-]
-```
-
-Each object has exactly 3 keys: `fully_qualified_name`, `selected`, `fields`. There is no `name` or `namespace` field. To list objects:
-```bash
-python3 -c "
-import json
-objs = json.load(open('/tmp/objects.json'))
-for o in objs:
-    print(f\"{o['fully_qualified_name']} | selected={o['selected']}\")
-"
-```
-
-To deselect specific objects (e.g., system tables):
-```bash
-python3 -c "
-import json
-objs = json.load(open('/tmp/objects.json'))
-skip = {'MSchange_tracking_history', 'sys.trace_xe_action_map'}
-for o in objs:
-    if any(s in o['fully_qualified_name'] for s in skip):
-        o['selected'] = False
-json.dump(objs, open('/tmp/objects.json','w'), indent=2)
-"
-```
-
-- `selected: true` includes the object in the pipeline
-- `selected: false` excludes it
-- `fields: null` syncs all fields (recommended)
 
 ## Listing and Viewing Datasources
 
