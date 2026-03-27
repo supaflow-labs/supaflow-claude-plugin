@@ -112,21 +112,29 @@ For "both" settings: `enabled` requires AND of both connectors, `supported_value
 
 ### Presenting Options to the User
 
-After reading capabilities, present a summary showing only valid options with defaults highlighted. Example:
+**STOP AND WAIT: After reading capabilities, you MUST present the options below and STOP. Do NOT run `pipelines create` or any other tool until the user replies.** This is a confirmation gate -- the user must explicitly approve or modify the settings before you proceed.
+
+Present a summary showing only valid options (from capabilities) with defaults highlighted:
 
 ```
-Pipeline configuration (defaults shown, change any you want):
-- Destination schema prefix: sqlserver (auto-generated, CANNOT be changed later)
-- Ingestion mode: HISTORICAL_PLUS_INCREMENTAL [INCREMENTAL, HISTORICAL also available]
-- Load mode: MERGE [APPEND, TRUNCATE_AND_LOAD, OVERWRITE also available]
-- Schema evolution: ALLOW_ALL [BLOCK_ALL, COLUMN_LEVEL_ONLY also available]
+Before I create the pipeline, please review these settings:
 
-Reply with any changes, or "defaults are fine" to proceed.
+Destination schema prefix: sqlserver (auto-generated from source type)
+  ** This CANNOT be changed after creation. Want a different prefix? **
+
+Ingestion mode: HISTORICAL_PLUS_INCREMENTAL (default)
+  Other options: INCREMENTAL, HISTORICAL
+
+Load mode: MERGE (default)
+  Other options: APPEND, TRUNCATE_AND_LOAD, OVERWRITE
+
+Schema evolution: ALLOW_ALL (default)
+  Other options: BLOCK_ALL, COLUMN_LEVEL_ONLY
+
+Are these settings OK, or would you like to change any?
 ```
 
-**Important:** The destination schema prefix CANNOT be changed after pipeline creation. Always highlight this.
-
-If the user says "just use defaults" or similar, skip the config file. Otherwise, create a config JSON with their overrides.
+Only proceed to `pipelines create` after the user responds. If the user says "defaults are fine" or similar, skip the config file. Otherwise, create a config JSON with their overrides.
 
 **Pipeline prefix** (destination schema name):
 - Auto-generated from source type (e.g., `sqlserver`, `hubspot`)

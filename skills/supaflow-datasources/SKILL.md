@@ -144,14 +144,30 @@ This tests the connection first and only saves on success. The test may take up 
 After creation, the platform discovers the source schema (tables, objects). Browse and export:
 
 ```bash
-# List discovered objects
+# List discovered objects (returns list in standard { "data": [...] } format)
 supaflow datasources catalog <identifier> --json
 
-# Export as JSON for pipeline creation
-supaflow datasources catalog <identifier> --output objects.json
+# Export as JSON file for pipeline creation
+supaflow datasources catalog <identifier> --output objects.json --json
+```
 
-# Trigger fresh discovery first, then export
-supaflow datasources catalog <identifier> --refresh --output objects.json
+**Important:** When using `--output`, the `--json` stdout returns metadata about the export, NOT the objects themselves:
+```json
+{ "file": "objects.json", "datasource": "SQL Server", "objects": 7 }
+```
+The `objects` field is an **integer count**, not a list. The actual object array is in the **file**. Read the file to work with objects:
+```bash
+python3 -c "
+import json
+objs = json.load(open('/tmp/objects.json'))
+for o in objs:
+    print(f\"{o['fully_qualified_name']} | selected={o['selected']}\")
+"
+```
+
+To trigger fresh discovery first:
+```bash
+supaflow datasources catalog <identifier> --refresh --output objects.json --json
 ```
 
 The exported `objects.json` can be edited (toggle `"selected": false` for objects to exclude) and passed to `pipelines create --objects`.

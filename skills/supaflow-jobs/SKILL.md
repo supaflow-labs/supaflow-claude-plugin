@@ -96,37 +96,34 @@ public.contacts           completed   completed   completed   16
 public.tasks              completed   completed   completed   3
 ```
 
-**JSON field reference for `jobs get`:**
-- `job_status`: overall job status
-- `status_message`: human-readable status description
-- `execution_duration_ms`: total duration in milliseconds
-- `reference_id`: pipeline/datasource UUID that triggered this job
-- `reference_type`: `pipeline` or `datasource`
-- `object_details[].fully_qualified_source_object_name`: the object name
-- `object_details[].ingestion_status`, `staging_status`, `loading_status`: per-stage status
-- `object_details[].ingestion_metrics.output_row_count`: rows read from source
+**`jobs get` JSON field names** -- use EXACTLY these names, do NOT guess alternatives:
 
-- `job_response`: summary counts (total_objects, total_rows_source, total_rows_destination, total_failed, total_skipped)
-
-Note: `jobs get` does not include `job_parameters` (encrypted credentials).
-
-**`jobs logs` JSON shape** (different field names from `jobs get`):
-```json
-{ "id": "...", "status": "completed", "message": null, "response": { ... } }
-```
-Note: `jobs logs` uses `status`/`message`/`response`, not `job_status`/`status_message`/`job_response`.
-
-**Parsing tip for agents** -- to extract object names and status from JSON:
 ```bash
 supaflow jobs get <job-id> --json | python3 -c "
-import sys,json
-j = json.load(sys.stdin)
-print(f'Status: {j[\"job_status\"]} ({j.get(\"execution_duration_ms\",0)}ms)')
+import sys,json; j=json.load(sys.stdin)
+if 'error' in j: print(j['error']['message']); sys.exit(1)
+dur = j.get('execution_duration_ms', 0)
+print(f\"Status: {j['job_status']} | Duration: {dur}ms | Message: {j.get('status_message','')}\")
+resp = j.get('job_response') or {}
+print(f\"Objects: {resp.get('total_objects',0)} | Rows: {resp.get('total_rows_source',0)} source, {resp.get('total_rows_destination',0)} dest | Failed: {resp.get('total_failed',0)}\")
 for o in j.get('object_details', []):
     name = o['fully_qualified_source_object_name']
     rows = (o.get('ingestion_metrics') or {}).get('output_row_count', 0)
-    print(f'  {name}: {o[\"loading_status\"]} ({rows} rows)')
+    print(f\"  {name}: ingestion={o['ingestion_status']} staging={o['staging_status']} loading={o['loading_status']} ({rows} rows)\")
 "
+```
+
+**Field name cheat sheet (do NOT invent alternatives):**
+- Job header: `job_status`, `status_message`, `execution_duration_ms`, `job_type`, `reference_id`, `reference_type`, `job_response`
+- Job response: `total_objects`, `total_rows_source`, `total_rows_destination`, `total_failed`, `total_skipped`
+- Object details array: `object_details` (NOT `objects` or `object_statuses`)
+- Object name: `fully_qualified_source_object_name` (NOT `object_name` or `name`)
+- Object stages: `ingestion_status`, `staging_status`, `loading_status` (NOT `status` or `object_status`)
+- Object metrics: `ingestion_metrics.output_row_count` (NOT `rows_extracted` or `rows_read`)
+
+**`jobs logs` uses DIFFERENT field names** (not `job_status`/`status_message`/`job_response`):
+```json
+{ "id": "...", "status": "completed", "message": null, "response": { ... } }
 ```
 
 ## Job Logs
