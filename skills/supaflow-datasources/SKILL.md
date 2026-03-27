@@ -74,6 +74,8 @@ Review the list and tell the user what already exists. For example:
 
 **Only proceed with creation if no suitable datasource exists or the user explicitly wants a new one.** Do NOT ask for credentials before checking.
 
+**When reusing an existing datasource:** If the user mentioned connector-specific features (Change Tracking, CDC, Iceberg, Parquet, etc.), run `datasources get <api_name> --json` to inspect the `configs` object and verify the feature is enabled BEFORE proceeding. Do NOT assume existing datasources have the right settings.
+
 ## Datasource Creation (Two-Step Process)
 
 ### Step 1: Scaffold the Env File

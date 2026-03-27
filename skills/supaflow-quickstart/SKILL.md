@@ -77,7 +77,37 @@ Review the list and tell the user what you found. For example:
 - "You have a Snowflake destination but no SQL Server source. I'll need to set up the source."
 - "No existing datasources. I'll set up both source and destination."
 
-**Only proceed to create datasources that are actually missing.** If both exist, skip to Step 5.
+**Only proceed to create datasources that are actually missing.** If both exist, skip to Step 3b.
+
+### Step 3b: Inspect Datasource Configuration (when reusing existing)
+
+**If the user mentioned connector-specific features** (Change Tracking, CDC, Iceberg, Parquet, Glue, auth method, etc.), you MUST verify the existing datasource has those features enabled. These are connector properties, NOT pipeline settings.
+
+```bash
+supaflow datasources get <api_name> --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+if 'error' in d: print(d['error']['message']); sys.exit(1)
+c = d.get('configs', {})
+for k,v in sorted(c.items()):
+    if isinstance(v, dict): print(f'{k}: [encrypted]')
+    elif v is not None and v != '': print(f'{k}: {v}')
+"
+```
+
+Check the relevant config property for the user's request:
+
+| User asks for | Check this config property | Connector |
+|---------------|---------------------------|-----------|
+| Change Tracking / CT | `changeTrackingEnabled` | SQL Server |
+| CDC / logical replication | replication slot / publication | PostgreSQL |
+| Iceberg / Parquet format | `outputFormat` | S3 / S3 Data Lake |
+| Glue catalog | Glue-related properties | S3 |
+
+**If the feature is not enabled:** Tell the user and offer to either edit the existing datasource (`datasources get <id> --output current.env`, modify, then `datasources edit`) or create a new one with the feature enabled.
+
+**If the feature is enabled:** Confirm to the user and proceed to Step 5.
+
+**If multiple datasources of the same type exist:** Inspect each one to find which has the feature enabled, or ask the user which to use.
 
 ### Step 4: Create Missing Datasources (if needed)
 
