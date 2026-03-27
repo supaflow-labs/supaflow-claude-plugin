@@ -133,7 +133,7 @@ Check the relevant config property for the user's request:
 
 | User asks for | Check this config property | Connector |
 |---------------|---------------------------|-----------|
-| Change Tracking / CT | `changeTrackingEnabled` | SQL Server |
+| Change Tracking / CT | `queryMode` = `CHANGE_TRACKING` | SQL Server |
 | CDC / logical replication | replication slot / publication | PostgreSQL |
 | Iceberg / Parquet format | `outputFormat` | S3 / S3 Data Lake |
 | Glue catalog | Glue-related properties | S3 |
@@ -196,6 +196,8 @@ supaflow pipelines list --json
 
 If a matching pipeline exists, ask the user if they want to edit it or add objects to it instead. Creating duplicate pipelines to the same destination causes merge conflicts and data corruption.
 
+If the user still wants a separate pipeline, you MUST ask them to explicitly confirm that they want a separate destination schema prefix before creating it.
+
 If creating a new pipeline, browse the source catalog and choose which objects (tables) to sync:
 
 ```bash
@@ -219,9 +221,34 @@ supaflow pipelines create \
 - Load mode (from **destination** capabilities `supported_values`)
 - Schema evolution (from **destination** capabilities `supported_values`)
 
+This is a hard confirmation gate. Do NOT say "I'll use the defaults" and continue. The user must explicitly approve the settings, including the default schema prefix, before `pipelines create`.
+
+After the user confirms the settings, record that confirmation before running create:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/record_pipeline_create_confirmation.py \
+  --name "<Pipeline Name>" \
+  --source <source-identifier> \
+  --project <project-identifier> \
+  --prefix "<confirmed-prefix>" \
+  --ingestion-mode "<confirmed-ingestion-mode>" \
+  --load-mode "<confirmed-load-mode>" \
+  --schema-evolution-mode "<confirmed-schema-evolution-mode>" \
+  --duplicate-approved <true-or-false> \
+  --confirmation-text "<short quote or summary of the user's reply>"
+```
+
 If the user wants non-default settings, create `--config pipeline-config.json` with their overrides. If `--objects` is omitted, all discovered objects are selected.
 
 ### Step 7: Run the First Sync
+
+Before syncing a newly created pipeline, verify the selected objects with `pipelines schema list`. Do NOT trust summary fields from `pipelines create` alone.
+
+```bash
+supaflow pipelines schema list <pipeline-identifier> --json
+```
+
+Compare the selected objects against the intended `objects.json`. If they don't match, stop and fix the pipeline selection before starting the first sync.
 
 ```bash
 supaflow pipelines sync <pipeline-identifier> --json

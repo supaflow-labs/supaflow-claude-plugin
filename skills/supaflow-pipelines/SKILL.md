@@ -61,7 +61,7 @@ Review the results for pipelines with the same source and destination. If one ex
 - What pipeline already exists (name, source, destination)
 - What objects it syncs (`supaflow pipelines schema list <identifier> --json`)
 - Offer to **edit** the existing pipeline or **add objects** to it instead of creating a new one
-- If the user still wants a new pipeline, warn that it should use different objects or a different destination schema prefix to avoid writing to the same tables
+- If the user still wants a new pipeline, warn that it should use different objects or a different destination schema prefix to avoid writing to the same tables, then ask for explicit confirmation
 
 Only create a new pipeline if no existing pipeline covers the same source-destination pair, or the user explicitly confirms they want a separate one.
 
@@ -112,7 +112,7 @@ For "both" settings: `enabled` requires AND of both connectors, `supported_value
 
 ### Presenting Options to the User
 
-**STOP AND WAIT: After reading capabilities, you MUST present the options below and STOP. Do NOT run `pipelines create` or any other tool until the user replies.** This is a confirmation gate -- the user must explicitly approve or modify the settings before you proceed.
+**STOP AND WAIT: After reading capabilities, you MUST present the options below and STOP. Do NOT run `pipelines create` or any other tool until the user replies.** This is a confirmation gate -- the user must explicitly approve or modify the settings before you proceed. This includes the default destination schema prefix. Silence is not approval.
 
 Present a summary showing only valid options (from capabilities) with defaults highlighted:
 
@@ -135,6 +135,23 @@ Are these settings OK, or would you like to change any?
 ```
 
 Only proceed to `pipelines create` after the user responds. If the user says "defaults are fine" or similar, skip the config file. Otherwise, create a config JSON with their overrides.
+
+After the user confirms the settings, record that confirmation before running `pipelines create`:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/record_pipeline_create_confirmation.py \
+  --name "<Pipeline Name>" \
+  --source <source-identifier> \
+  --project <project-identifier> \
+  --prefix "<confirmed-prefix>" \
+  --ingestion-mode "<confirmed-ingestion-mode>" \
+  --load-mode "<confirmed-load-mode>" \
+  --schema-evolution-mode "<confirmed-schema-evolution-mode>" \
+  --duplicate-approved <true-or-false> \
+  --confirmation-text "<short quote or summary of the user's reply>"
+```
+
+`pipelines create` is guarded by a plugin hook. If you skip this step, the hook will block the command.
 
 **Pipeline prefix** (destination schema name):
 - Auto-generated from source type (e.g., `sqlserver`, `hubspot`)
@@ -251,7 +268,7 @@ Note: `ACTIVATION` pipelines always enforce `BLOCK_ALL` schema evolution.
 **Pipeline config** (set via `--config`) controls how data moves: ingestion mode, load mode, schema evolution, error handling, sync frequency. These are the settings in the table above.
 
 **Connector properties** (set in the datasource env file) control how the connector connects and behaves at the source/destination level. These are NOT pipeline settings. Examples:
-- **SQL Server**: Change Tracking (`changeTrackingEnabled`), CDC mode
+- **SQL Server**: Change Tracking (`queryMode: CHANGE_TRACKING`), CDC mode
 - **S3/S3 Data Lake**: file format (Parquet, Iceberg, CSV), Glue catalog, bucket path
 - **Snowflake**: warehouse, role, authentication method, database/schema
 - **PostgreSQL**: replication slot, publication name, SSL mode
@@ -403,6 +420,16 @@ supaflow jobs status <job-id> --json
 # Full details after terminal state
 supaflow jobs get <job-id> --json
 ```
+
+### Verify selected objects after create
+
+Before the first sync of a newly created pipeline, verify the actual selected objects:
+
+```bash
+supaflow pipelines schema list <identifier> --json
+```
+
+Treat `pipelines schema list` as the source of truth for selection. Do NOT assume summary fields from `pipelines create` prove which objects are selected.
 
 ### Full resync after schema changes
 

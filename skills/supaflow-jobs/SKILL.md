@@ -59,7 +59,7 @@ Available filters: `status` (by job_status), `pipeline` (by pipeline UUID), `typ
 supaflow jobs get <job-id> --json
 ```
 
-**`jobs get` is context-aware:** while a job is running, it returns only the lightweight status (~200 bytes). Once the job reaches a terminal state (completed, failed, etc.), it includes full per-object details with metrics. This means agents can poll `jobs get` repeatedly without wasting context.
+**`jobs get` is context-aware:** while a job is running, it may return only lightweight status. Once the job reaches a terminal state (completed, failed, etc.), it includes full per-object details with metrics. Even so, prefer `jobs status` for polling and use `jobs get` only after terminal state.
 
 **Polling pattern for agents:**
 ```bash

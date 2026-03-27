@@ -228,7 +228,7 @@ List output follows the standard contract: `{ "data": [...], "total": N, "limit"
     "database": "SalesDB",
     "username": "supaflow_reader",
     "password": { "v": 1, "fp": "abc...", "data": "..." },
-    "changeTrackingEnabled": "true",
+    "queryMode": "CHANGE_TRACKING",
     "sslMode": "require"
   }
 }

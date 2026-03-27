@@ -1,5 +1,5 @@
 {
-  "description": "Verify Supaflow CLI installation and authentication on session start",
+  "description": "Verify Supaflow CLI setup on session start and enforce pipeline-create confirmation",
   "hooks": {
     "SessionStart": [
       {
@@ -8,6 +8,30 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/check-setup.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/enforce_pipeline_create_confirmation.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/clear_pipeline_create_confirmation.py",
             "timeout": 15
           }
         ]
