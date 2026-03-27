@@ -6,7 +6,7 @@ set -euo pipefail
 # Outputs setup guidance to stdout (shown in transcript) so Claude can
 # proactively help the user fix any issues.
 
-MIN_CLI_VERSION="0.1.6"
+MIN_CLI_VERSION="0.1.7"
 
 messages=()
 
