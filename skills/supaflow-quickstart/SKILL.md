@@ -21,6 +21,41 @@ Before starting, verify:
 
 Do NOT ask for API keys, credentials, or connection details yet. The steps below tell you exactly when to ask for each piece of information.
 
+## Step 0: Read Connector Documentation
+
+**Before building anything, understand what you're building.** Fetch the relevant connector docs for the source and destination the user mentioned. The docs explain prerequisites, configuration properties, sync modes, and troubleshooting.
+
+```bash
+# Fetch the full Supaflow docs (single markdown file, ~380KB)
+curl -s https://www.supa-flow.io/docs/llms/docs.txt > /tmp/supaflow-docs.txt
+```
+
+**Do NOT load the entire file into context -- it's ~11K lines.** Instead, search for the relevant sections:
+- Each doc page is delimited by `<!-- Source: URL -->` comments
+- Search for the source connector section (e.g., `grep -n "Source: .*sqlserver" /tmp/supaflow-docs.txt`)
+- Search for the destination section (e.g., `grep -n "Source: .*snowflake" /tmp/supaflow-docs.txt`)
+- Read only those sections (use `sed -n 'START,ENDp'`)
+
+**Key pages by connector:**
+
+| Connector | URL path | What to look for |
+|-----------|----------|------------------|
+| SQL Server | `sources/sqlserver` | Query Mode (STANDARD vs CHANGE_TRACKING), CT setup SQL |
+| PostgreSQL | `sources/postgres` | Sync modes, replication setup |
+| Salesforce | `sources/salesforce` | OAuth setup, API limits |
+| HubSpot | `sources/hubspot` | Supported objects, rate limiting |
+| Snowflake | `destinations/snowflake` | Auth methods, warehouse/role setup |
+| S3 | `destinations/s3` | IAM role, bucket config, file format |
+| S3 Data Lake | `destinations/s3-data-lake` | Iceberg/Parquet, Glue catalog |
+| Pipelines | `ingestion-pipelines` | Sync settings, load modes, schema evolution |
+
+After reading the docs, you'll know:
+- What prerequisites the user needs (DB users, permissions, firewall rules)
+- What connector properties matter for their use case (e.g., `queryMode: CHANGE_TRACKING`)
+- What pipeline settings to recommend
+
+Then proceed with the workflow steps below.
+
 ## Workflow Order
 
 The steps below must be followed in order. Each step depends on the previous one.

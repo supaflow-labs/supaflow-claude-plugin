@@ -38,16 +38,21 @@ All commands require prior authentication and workspace selection (see the supaf
 Each connector may require prerequisites (user accounts, permissions, network access, API keys). If the user needs help with setup, **fetch the Supaflow docs** which contain connector-specific setup guides with SQL scripts, configuration steps, and required permissions:
 
 ```bash
-# Fetch all Supaflow docs as LLM-ready markdown (single file, all connectors)
-curl -s https://www.supa-flow.io/docs/llms/docs.txt
+# Fetch docs to a temp file (single markdown file, ~380KB, ~11K lines)
+curl -s https://www.supa-flow.io/docs/llms/docs.txt > /tmp/supaflow-docs.txt
+
+# Do NOT load the entire file -- search for the relevant connector section:
+grep -n "Source: .*sqlserver\|Source: .*snowflake\|Source: .*postgres" /tmp/supaflow-docs.txt
+# Then read only that section with sed -n 'START,ENDp' /tmp/supaflow-docs.txt
 ```
 
-This file contains setup guides for every connector (PostgreSQL, Snowflake, S3, Salesforce, HubSpot, SQL Server, etc.) including:
+Each doc page is delimited by `<!-- Source: URL -->` comments. Read only the sections relevant to the user's connectors. The docs contain:
 - Required database users and permissions (e.g., CREATE USER, GRANT SELECT)
 - Snowflake warehouse/role setup scripts
 - S3 bucket and IAM role configuration
 - OAuth app setup for Salesforce/HubSpot
 - Network access and firewall rules
+- **Connector-specific properties** (Query Mode for SQL Server, replication for PostgreSQL, etc.)
 
 If the user hasn't set up the source/destination system yet, fetch the docs and help them through the setup before creating the datasource in Supaflow.
 
