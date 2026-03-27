@@ -56,5 +56,5 @@ cat <<EOF
 [supaflow-claude-plugin] Setup issues detected:
 ${combined}
 
-Guide the user through fixing these before running any supaflow commands. The supaflow-auth skill has detailed setup instructions.
+Fix these issues by executing the commands above directly via Bash (do NOT ask the user to run them manually). Then proceed with the user's request. The supaflow-auth skill has detailed setup instructions if needed.
 EOF
