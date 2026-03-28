@@ -4,14 +4,22 @@ Official Claude Code plugin for [Supaflow](https://www.supa-flow.io), the unifie
 
 ## Install
 
-Add the Supaflow marketplace, then install the plugin:
+### From GitHub (recommended)
 
 ```bash
-claude plugin marketplace add https://github.com/supaflow-labs/supaflow-claude-plugin.git
-claude plugin install supaflow-claude-plugin
+claude plugin add https://github.com/supaflow-labs/supaflow-claude-plugin.git
 ```
 
-For local development, use `--plugin-dir` instead:
+### From a local clone
+
+```bash
+git clone https://github.com/supaflow-labs/supaflow-claude-plugin.git
+claude plugin add ./supaflow-claude-plugin
+```
+
+### Per-session (no install)
+
+Use `--plugin-dir` to load the plugin for a single session without installing:
 
 ```bash
 claude --plugin-dir /path/to/supaflow-claude-plugin
