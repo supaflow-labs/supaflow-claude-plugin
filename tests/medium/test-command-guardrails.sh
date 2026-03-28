@@ -64,4 +64,16 @@ F="$COMMANDS/delete-pipeline.md"
 assert_file_contains "$F" "explicit confirmation" "delete-pipeline: contains explicit confirmation language"
 echo ""
 
+# --- create-schedule.md ---
+echo ""
+echo "-- create-schedule.md --"
+F="$COMMANDS/create-schedule.md"
+assert_file_contains "$F" "schedules list" "create-schedule: checks for existing schedules"
+assert_file_contains "$F" "schedules create" "create-schedule: contains schedules create"
+assert_file_contains "$F" "confirm\|Confirm\|Create this schedule" "create-schedule: contains confirmation language"
+assert_file_contains "$F" "\-\-pipeline" "create-schedule: uses --pipeline flag"
+assert_file_contains "$F" "\-\-cron" "create-schedule: uses --cron flag"
+assert_file_contains "$F" "cron_schedule" "create-schedule: uses cron_schedule for list/verify (not cron)"
+assert_file_contains "$F" "d\['cron'\]" "create-schedule: create response uses d['cron'] (not cron_schedule)"
+
 print_summary

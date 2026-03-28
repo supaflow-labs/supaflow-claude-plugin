@@ -1,18 +1,15 @@
 ---
 name: supaflow-schedules
-description: This skill should be used when the user asks to "schedule a pipeline", "create a schedule", "set up cron", "automate sync", "recurring pipeline run", "edit schedule", "run schedule now", "view schedule history", "pause schedule", "resume schedule", "disable schedule", "enable schedule", "delete schedule", or mentions Supaflow schedules, cron expressions, pipeline automation, task scheduling, orchestration scheduling, or scheduled sync. Covers schedule lifecycle management in the @getsupaflow/cli.
+description: Use when you need reference information about Supaflow schedule lifecycle, cron syntax, timezone handling, or schedule management
 ---
 
 # Supaflow Schedule Management
 
-**AGENT BEHAVIOR:**
-- **Execute all CLI commands directly via Bash.** Do NOT ask the user to run commands manually.
-- **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only the fields you need. NEVER dump full JSON into the conversation.
-- **Only ask the user for:** schedule preferences (frequency, timezone).
+**This is a reference skill, not a workflow.** For schedule operations, use the `/create-schedule` command. This skill provides background knowledge about cron syntax, timezone handling, and schedule lifecycle.
 
 Schedules trigger pipelines, tasks, or orchestrations on a cron-based recurring schedule. Each schedule targets exactly one resource and uses a standard 5-field cron expression executed in UTC.
 
-All commands require prior authentication and workspace selection (see the supaflow-auth skill).
+All commands require prior authentication and workspace selection .
 
 ## Creating a Schedule
 

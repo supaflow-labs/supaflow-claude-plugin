@@ -45,4 +45,8 @@ for skill_dir in "$PLUGIN_ROOT/skills"/*/; do
     fi
 done
 
+# Check using-supaflow has cli-reference.md supporting file
+assert_contains "$([ -f "$PLUGIN_ROOT/skills/using-supaflow/cli-reference.md" ] && echo 'exists' || echo 'missing')" \
+    "exists" "skills/using-supaflow/cli-reference.md exists"
+
 print_summary

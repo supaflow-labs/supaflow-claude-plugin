@@ -24,7 +24,7 @@ run_hook_with_mocks() {
     echo "$output"
 }
 
-# Scenario 1: Healthy env - valid JSON shape, correct hookEventName, has Operating Rules, no [SETUP]
+# Scenario 1: Healthy env - valid JSON shape, correct hookEventName, has HARD RULES, no [SETUP]
 mock_dir=$(create_mock_cli)
 output=$(run_hook_with_mocks "$mock_dir")
 
@@ -45,7 +45,9 @@ hook_event=$(echo "$output" | python3 -c "import json,sys; d=json.load(sys.stdin
 assert_contains "$hook_event" "SessionStart" "healthy env: hookEventName is SessionStart"
 
 additional_ctx=$(echo "$output" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['hookSpecificOutput']['additionalContext'])" 2>/dev/null || echo "")
-assert_contains "$additional_ctx" "Operating Rules" "healthy env: additionalContext contains Operating Rules"
+assert_contains "$additional_ctx" "HARD RULES" "healthy env: additionalContext contains HARD RULES"
+assert_contains "$additional_ctx" "Available Commands" "healthy env: additionalContext contains commands table"
+assert_contains "$additional_ctx" "Parser Contracts" "healthy env: additionalContext contains parser contracts"
 
 assert_not_contains "$output" "\[SETUP\]" "healthy env: no [SETUP] warnings"
 

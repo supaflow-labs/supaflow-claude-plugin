@@ -1,18 +1,15 @@
 ---
 name: supaflow-pipelines
-description: This skill should be used when the user asks to "create a pipeline", "sync data", "run a pipeline", "full resync", "reset target", "edit pipeline config", "select objects", "manage schema", "set ingestion mode", "configure load mode", "pipeline settings", "disable pipeline", "enable pipeline", "delete pipeline", "list pipelines", or mentions Supaflow pipelines, data replication, object selection, or pipeline configuration. Covers the full pipeline lifecycle including schema management in the @getsupaflow/cli.
+description: Use when you need reference information about Supaflow pipeline configuration, schema management, sync modes, object selection, or pipeline lifecycle
 ---
 
 # Supaflow Pipeline Management
 
-**AGENT BEHAVIOR:**
-- **Execute all CLI commands directly via Bash.** Do NOT ask the user to run commands manually.
-- **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only the fields you need. NEVER dump full JSON into the conversation. For schema list and object selection, parse with scripts.
-- **Only ask the user for:** pipeline name, object selection preferences, and config choices.
+**This is a reference skill, not a workflow.** For pipeline operations, use `/create-pipeline`, `/edit-pipeline`, or `/delete-pipeline` commands. This skill provides background knowledge about pipeline config fields, schema management, and sync modes.
 
 Pipelines move data from a source datasource to a destination warehouse. Each pipeline belongs to a project (which defines the destination) and selects which objects to sync.
 
-All commands require prior authentication and workspace selection (see the supaflow-auth skill).
+All commands require prior authentication and workspace selection .
 
 ## Projects
 

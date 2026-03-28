@@ -1,8 +1,6 @@
-# supaflow-claude-plugin
+# Supaflow Plugin for Claude Code
 
-Official Claude Code plugin for [Supaflow](https://www.supa-flow.io) (supa-flow.io), the unified data movement platform for connector-based ETL, ELT, reverse ETL, and orchestration. Use natural language to manage Supaflow datasources, data pipelines, warehouse syncs, schedules, and job monitoring through the `@getsupaflow/cli`.
-
-Supaflow helps teams move data from SaaS apps and databases like Salesforce, HubSpot, and PostgreSQL into warehouses like Snowflake, then monitor syncs, troubleshoot failures, and automate recurring runs. This plugin gives Claude Code the Supaflow-specific skills needed to operate those workflows through the CLI.
+Official Claude Code plugin for [Supaflow](https://www.supa-flow.io), the unified data movement platform. Manage datasources, pipelines, schedules, and job monitoring through natural language backed by the `@getsupaflow/cli`.
 
 ## Install
 
@@ -19,83 +17,60 @@ For local development, use `--plugin-dir` instead:
 claude --plugin-dir /path/to/supaflow-claude-plugin
 ```
 
-On first session after install, a setup hook verifies:
+## Architecture
+
+The plugin is organized in three layers:
+
+**`using-supaflow` skill** - Injected at session start. Establishes session policy, tool restrictions, and routes incoming requests to the correct command or domain skill.
+
+**Commands** - Execution layer. Each command maps to one user-facing workflow, enforces guardrails (e.g., blocks destructive actions in activation pipelines), and restricts which tools may run.
+
+**Domain skills** - Reference material. Loaded on demand to supply connector properties, config schemas, log patterns, and cron syntax without polluting the base context.
+
+## Available Commands
+
+| Command | Description |
+|---|---|
+| `/create-datasource` | Create a new datasource with guided credential setup |
+| `/edit-datasource` | Edit datasource configuration |
+| `/create-pipeline` | Create a pipeline from source to destination |
+| `/edit-pipeline` | Edit pipeline config or object selection |
+| `/delete-pipeline` | Delete a pipeline permanently |
+| `/check-job` | Check job status or latest sync |
+| `/explain-job-failure` | Diagnose a failed job |
+| `/create-schedule` | Schedule recurring pipeline syncs |
+
+## Domain Skills
+
+| Skill | Content |
+|---|---|
+| `supaflow-datasources` | Connector properties, env file format, credential catalog |
+| `supaflow-pipelines` | Pipeline config fields, schema management, sync modes |
+| `supaflow-jobs` | Job lifecycle, metrics schema, log analysis patterns |
+| `supaflow-schedules` | Cron syntax, timezone handling, schedule constraints |
+
+Domain skills are loaded automatically when a command needs them. They are not invoked directly.
+
+## Setup
+
+On first session after install, the plugin verifies:
+
 - Node.js 18+ is installed
-- Supaflow CLI is installed and meets the minimum version (v0.1.10+)
-- CLI is authenticated with a valid API key
-- A workspace is selected
+- Supaflow CLI v0.1.10+ is installed (`npm install -g @getsupaflow/cli`)
+- CLI is authenticated with a valid API key (`supaflow auth login`)
+- A workspace is selected (`supaflow workspaces select`)
 
-If anything is missing, Claude will guide you through the setup automatically.
+If anything is missing, Claude will guide you through the setup. An API key can be generated at `https://app.supa-flow.io` under Settings > API Keys.
 
-### Manual Setup (if needed)
-
-The plugin requires Node.js 18+, Supaflow CLI v0.1.9+, and a Supaflow account:
+## Testing
 
 ```bash
-# 1. Install Node.js 18+ (skip if already installed)
-brew install node          # macOS
-# See https://nodejs.org for other platforms
-
-# 2. Install the Supaflow CLI (v0.1.9 or later)
-npm install -g @getsupaflow/cli
-supaflow --version         # must be 0.1.9+
-
-# 3. Authenticate (requires an API key from https://app.supa-flow.io > Settings > API Keys)
-supaflow auth login
-
-# 4. Select a workspace
-supaflow workspaces select
-```
-
-## What This Plugin Provides
-
-Six skills that teach Claude Code how to manage Supaflow resources through the CLI:
-
-| Skill | Purpose |
-|-------|---------|
-| `supaflow-auth` | Authentication, workspace selection, environment variables, troubleshooting |
-| `supaflow-datasources` | Datasource lifecycle: init, create, edit, test, catalog, refresh, delete, disable, enable |
-| `supaflow-pipelines` | Pipeline lifecycle: create, edit, sync, schema selection, delete, disable, enable |
-| `supaflow-schedules` | Schedule management: create, edit, run, history, delete, disable, enable |
-| `supaflow-jobs` | Job monitoring: list, get, logs, failure diagnosis |
-| `supaflow-quickstart` | End-to-end walkthrough: auth through scheduled pipeline in the correct order |
-
-Skills activate automatically based on what you ask Claude to do. No slash commands required.
-
-## How It Works
-
-1. You describe what you want in natural language (e.g., "Set up a pipeline from my Postgres database to Snowflake")
-2. Claude loads the relevant skill(s) to understand the CLI commands needed
-3. Claude generates and runs `supaflow` CLI commands with `--json` for structured output
-4. Claude parses the results and guides you through the workflow
-
-The plugin never reimplements CLI logic -- it teaches Claude the correct commands, flags, and workflows.
-
-## Environment Variables
-
-For non-interactive use (CI/CD, scripts, agent automation):
-
-| Variable | Description |
-|----------|-------------|
-| `SUPAFLOW_API_KEY` | API key (alternative to `supaflow auth login`) |
-| `SUPAFLOW_WORKSPACE_ID` | Workspace UUID (alternative to `supaflow workspaces select`) |
-| `SUPAFLOW_APP_URL` | Override app URL (default: `https://app.supa-flow.io`) |
-| `SUPAFLOW_SUPABASE_URL` | Direct Supabase project URL (dev/testing; bypasses bootstrap -- `SUPAFLOW_API_KEY` must be a Supabase JWT, not an `ak_` key) |
-| `SUPAFLOW_SUPABASE_ANON_KEY` | Supabase anon key (required with `SUPAFLOW_SUPABASE_URL`) |
-
-## Quick Example
-
-```
-You: Set up a pipeline to sync my Postgres database to Snowflake every hour
-
-Claude: I'll walk you through the full setup...
-        1. Creates source datasource (scaffolds env file, you fill in creds, creates)
-        2. Creates destination datasource (same flow for Snowflake)
-        3. Creates a project linking to the destination
-        4. Exports the catalog, you select objects
-        5. Creates the pipeline
-        6. Runs the first sync
-        7. Creates an hourly schedule
+cd tests
+./run-tests.sh              # run fast unit tests (default)
+./run-tests.sh --medium     # include medium integration tests
+./run-tests.sh --slow       # include slow end-to-end tests
+./run-tests.sh --live       # run against a live Supaflow workspace
+./run-tests.sh --all        # run everything
 ```
 
 ## License

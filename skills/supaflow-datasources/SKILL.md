@@ -1,23 +1,11 @@
 ---
 name: supaflow-datasources
-description: This skill should be used when the user asks to "create a datasource", "connect to a database", "set up a connection", "test a datasource", "browse catalog", "discover schema", "refresh schema", "edit datasource credentials", "encrypt secrets", "init datasource", "disable datasource", "enable datasource", "delete datasource", or mentions Supaflow datasources, connectors, connection configuration, env files, or listing source tables. Covers the full datasource lifecycle in the @getsupaflow/cli.
+description: Use when you need reference information about Supaflow datasources, connector properties, env file format, catalog browsing, or connection testing
 ---
 
 # Supaflow Datasource Management
 
-**AGENT BEHAVIOR:**
-- **Execute all CLI commands directly via Bash.** Do NOT ask the user to run commands manually.
-- **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only the fields you need. NEVER dump full JSON into the conversation. For catalog (can be 100s of objects), always use `--output <file>` and parse with a script.
-- **ALWAYS run `datasources list` FIRST** before asking for any credentials or creating anything. Tell the user what datasources already exist and ask which to reuse. Only create what's missing.
-- **Before asking for connection details, ask the user if they already have credentials in a file** (e.g., `.env`, `config.json`, `credentials.yaml`). If yes, read the file to extract values -- this is much faster than typing each field. If no, ask for non-sensitive fields in chat.
-- **NEVER ask for all credentials upfront.** Work step by step: scaffold the env file first, read the annotations to learn which fields are required/sensitive, then ask only for what's needed.
-- **NEVER ask for passwords or secrets in chat.** The generated env file marks each property with annotations in comments: `(required)`, `(optional)`, `(sensitive)`. Read the env file to identify which fields are sensitive vs non-sensitive. Then:
-  1. Ask: "Do you have connection credentials in a file already (e.g., .env, config file)? If so, share the path. Otherwise I'll ask for the details."
-  2. If user has a file: read it, extract matching property values, fill into the env file
-  3. If no file: ask for all **non-sensitive required fields** in chat (host, port, database, username, etc.) and fill via Edit tool
-  4. For **sensitive fields**: tell the user which ones still need to be filled: "I've filled in the connection details. Please open `<filename>.env` and add these sensitive fields: `password`. Type `done` when ready."
-  5. Optionally open the file for them: `open <filename>.env` (macOS) or suggest `! $EDITOR <filename>.env`
-  6. Once user confirms, run `datasources create --from <file>` which auto-encrypts sensitive fields on disk
+**This is a reference skill, not a workflow.** For datasource operations, use the `/create-datasource` or `/edit-datasource` commands. This skill provides background knowledge about connector properties, env file format, and catalog structure.
 
 **Env file annotation format:**
 ```env
@@ -31,7 +19,7 @@ sslMode=prefer
 
 Manage datasource connections to external systems (databases, APIs, cloud storage). Each datasource stores encrypted connection credentials and discovers the source schema automatically.
 
-All commands require prior authentication and workspace selection (see the supaflow-auth skill).
+All commands require prior authentication and workspace selection .
 
 ## Connector Setup Guides
 

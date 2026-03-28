@@ -1,18 +1,15 @@
 ---
 name: supaflow-jobs
-description: This skill should be used when the user asks to "check job status", "monitor a pipeline run", "view job logs", "list running jobs", "check failed jobs", "get job details", "see job metrics", "troubleshoot a failed sync", "view job errors", "why did my pipeline fail", "debug pipeline failure", or mentions Supaflow jobs, pipeline execution status, sync progress, or job monitoring. Covers job listing, status inspection, and log retrieval in the @getsupaflow/cli.
+description: Use when you need reference information about Supaflow job lifecycle, per-object metrics, log analysis, job statuses, or execution details
 ---
 
 # Supaflow Job Monitoring
 
-**AGENT BEHAVIOR:**
-- **Execute all CLI commands directly via Bash.** Do NOT ask the user to run commands manually.
-- **Use `jobs status` for polling** (~100 bytes). Only use `jobs get` after terminal state.
-- **Preserve context window.** Pipe `--json` output through `python3 -c` to extract only status/summary. NEVER dump full job JSON into the conversation.
+**This is a reference skill, not a workflow.** For job inspection, use `/check-job` or `/explain-job-failure` commands. This skill provides background knowledge about job lifecycle, per-object metrics, and log analysis.
 
 Jobs are async execution records created by pipeline syncs, datasource tests, and schema refreshes. Every `pipelines sync`, `datasources create`, `datasources test`, and `datasources refresh` command creates a job.
 
-All commands require prior authentication and workspace selection (see the supaflow-auth skill).
+All commands require prior authentication and workspace selection .
 
 ## Listing Jobs
 
