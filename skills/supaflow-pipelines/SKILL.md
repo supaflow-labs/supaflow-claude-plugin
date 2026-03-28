@@ -199,7 +199,7 @@ The `--source` and `--project` flags accept UUID or api_name. The destination is
 
 ### Destination Schema (Pipeline Prefix)
 
-By default, Supaflow auto-generates a destination schema name based on the source connector type (e.g., `salesforce`, `postgres`, `hubspot`). If a pipeline with that source type already exists, it appends a number (`salesforce_2`, `salesforce_3`, etc.).
+The destination schema name defaults to the lowercased source connector type (e.g., `salesforce`, `postgres`, `hubspot`) unless the user sets a custom prefix.
 
 Before creating, inform the user:
 - "This pipeline will write to the `<source_type>` schema in your destination. If that schema doesn't exist, it will be created automatically."
