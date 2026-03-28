@@ -116,10 +116,12 @@ For "both" settings: `enabled` requires AND of both connectors, `supported_value
 
 Present a summary showing only valid options (from capabilities) with defaults highlighted:
 
+The default prefix is the lowercased `connector_type` of the source datasource. Compute it from `datasources list` output (e.g., `SQLSERVER` -> `sqlserver`, `POSTGRES` -> `postgres`).
+
 ```
 Before I create the pipeline, please review these settings:
 
-Destination schema prefix: sqlserver (auto-generated from source type)
+Destination schema prefix: sqlserver (auto-generated from source connector type)
   ** This CANNOT be changed after creation. Want a different prefix? **
 
 Ingestion mode: HISTORICAL_PLUS_INCREMENTAL (default)
@@ -136,32 +138,35 @@ Are these settings OK, or would you like to change any?
 
 Only proceed to `pipelines create` after the user responds. If the user says "defaults are fine" or similar, skip the config file. Otherwise, create a config JSON with their overrides.
 
-After the user confirms the settings, record that confirmation before running `pipelines create`:
+### Pipeline Prefix (Destination Schema Name)
 
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/record_pipeline_create_confirmation.py \
-  --name "<Pipeline Name>" \
-  --source <source-identifier> \
-  --project <project-identifier> \
-  --prefix "<confirmed-prefix>" \
-  --ingestion-mode "<confirmed-ingestion-mode>" \
-  --load-mode "<confirmed-load-mode>" \
-  --schema-evolution-mode "<confirmed-schema-evolution-mode>" \
-  --duplicate-approved <true-or-false> \
-  --confirmation-text "<short quote or summary of the user's reply>"
+The default prefix is the **lowercased source connector type** (e.g., `sqlserver`, `postgres`, `hubspot`). If a pipeline with that prefix already exists for the same destination, the system appends a number (`sqlserver_2`, `sqlserver_3`, etc.).
+
+When presenting options, compute the default: take the source datasource's `connector_type` from `datasources list` and lowercase it.
+
+- If user accepts the default: leave `pipeline_prefix` empty (or omit the config file) -- the system generates it automatically
+- If user wants a custom prefix: set **`pipeline_prefix`** and **`is_custom_prefix: true`** in the config file
+
+**Config file field names** (use EXACTLY these snake_case names -- the CLI rejects unknown fields):
+```json
+{
+  "pipeline_prefix": "my_custom_schema",
+  "is_custom_prefix": true,
+  "ingestion_mode": "INCREMENTAL",
+  "load_mode": "APPEND",
+  "schema_evolution_mode": "BLOCK_ALL"
+}
 ```
 
-`pipelines create` is guarded by a plugin hook. If you skip this step, the hook will block the command.
+**Do NOT use camelCase** (e.g., `destinationSchemaPrefix`, `loadMode`, `ingestionMode`). The backend uses `@JsonNaming(SnakeCaseStrategy)` and will crash on unrecognized fields. All valid field names: `pipeline_prefix`, `is_custom_prefix`, `ingestion_mode`, `load_mode`, `schema_evolution_mode`, `error_handling`, `perform_hard_deletes`, `full_sync_frequency`, `full_resync_frequency`, `destination_table_handling`, `namespace_rules`, `pipeline_type`, `load_optimization_mode`, `checksum_validation_level`.
 
-**Pipeline prefix** (destination schema name):
-- Auto-generated from source type (e.g., `sqlserver`, `hubspot`)
-- Ask: "Your data will be written to the `<source_type>` schema in the destination. Want to use this or a custom prefix?"
-- If custom, set `pipeline_prefix` and `is_custom_prefix: true` in config
-
-If the user wants non-default settings, create a config file:
+Write the config file as a **separate command** before `pipelines create`:
 ```bash
-echo '{"ingestion_mode": "INCREMENTAL", "load_mode": "APPEND", "pipeline_prefix": "my_custom_schema", "is_custom_prefix": true}' > pipeline-config.json
-supaflow pipelines create ... --config pipeline-config.json --json
+# Step 1: Write config file
+echo '{"pipeline_prefix": "my_custom_schema", "is_custom_prefix": true}' > /tmp/pipeline-config.json
+
+# Step 2: Create pipeline (separate command)
+supaflow pipelines create --name "..." --source ... --project ... --config /tmp/pipeline-config.json --json
 ```
 
 ```bash
@@ -328,7 +333,7 @@ supaflow pipelines schema add <identifier> Opportunity --json
 supaflow pipelines schema select <identifier> --from objects.json --json
 ```
 
-**Schema list JSON shape** (compact, no field arrays):
+**Schema list JSON shape** -- the field is `object`, NOT `fully_qualified_name` or `name`:
 ```json
 {
   "data": [
@@ -337,6 +342,19 @@ supaflow pipelines schema select <identifier> --from objects.json --json
   ]
 }
 ```
+
+**Parsing example:**
+```bash
+supaflow pipelines schema list <identifier> --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+if 'error' in d: print(d['error']['message']); sys.exit(1)
+for o in d['data']:
+    sel = 'SELECTED' if o['selected'] else 'excluded'
+    print(f\"  {o['object']} | {sel} | {o['total_fields']} fields\")
+"
+```
+
+**Field name warning:** `pipelines schema list` uses `object` for the name. `datasources catalog --output` uses `fully_qualified_name`. These are DIFFERENT commands with DIFFERENT field names.
 
 **To add a single object to a pipeline**, use `schema add` -- no need to export/edit/reimport a file:
 ```bash
