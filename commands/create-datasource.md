@@ -1,6 +1,6 @@
 ---
 description: Create a new Supaflow datasource with guided credential setup
-allowed-tools: Bash(supaflow *), Read, Edit, Write
+allowed-tools: Bash(supaflow *), Bash(snow *), Bash(aws *), Bash(gcloud *), Bash(az *), Bash(psql *), Bash(sqlcmd *), Bash(mysql *), Read, Edit, Write
 argument-hint: [connector-type]
 ---
 
@@ -84,7 +84,15 @@ Are these already done, or do you need help setting any of them up?
 
 5. Wait for the user's response:
    - **All done:** Proceed to Step 4.
-   - **Need help:** Walk the user through the prerequisite steps using the doc content. Show the exact commands or SQL from the docs (IAM policies, firewall rules, database user creation, etc.) but explain that this command is restricted to `Bash(supaflow *)` and cannot execute AWS CLI, SQL, or other non-Supaflow commands directly. The user must run those commands themselves.
+   - **Need help:** Walk the user through the prerequisite steps using the doc content. This command can run prerequisite CLIs directly:
+     - `snow sql` -- Snowflake user/role/warehouse/database creation
+     - `aws iam`, `aws s3` -- IAM roles, S3 bucket policies
+     - `gcloud` -- GCP service accounts, permissions
+     - `az` -- Azure resource configuration
+     - `psql` -- PostgreSQL user/permission setup
+     - `sqlcmd` -- SQL Server user/permission setup
+     - `mysql` -- MySQL user/permission setup
+     Execute the prerequisite commands from the docs when the user confirms. Ask before running each destructive operation (CREATE ROLE, CREATE USER, etc.).
    - **Explicitly deferred:** The user says "skip prerequisites" or "I'll handle that later." Acknowledge the risk and proceed to Step 4.
 
 **GUARDRAIL: Do NOT proceed to datasource creation until prerequisites are confirmed complete or explicitly deferred by the user.**
