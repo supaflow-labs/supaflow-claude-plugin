@@ -22,7 +22,9 @@ OPERATING_RULES="Supaflow CLI Operating Rules:
 - Never ask for passwords or secrets in chat. Tell the user to edit the env file.
 - Wait for explicit user confirmation before pipelines create.
 - For datasources catalog, use --output <file> and parse locally. Never dump into conversation.
-- On failed job, use jobs get + jobs logs before diagnosing. Never blindly retry."
+- On failed job, use jobs get + jobs logs before diagnosing. Never blindly retry.
+- Always run pipelines init before pipelines create. Present actual config values and wait for explicit confirmation.
+- In shell loops, never use 'status' as a variable name (read-only in zsh). Use job_status or poll_status."
 
 warnings=()
 

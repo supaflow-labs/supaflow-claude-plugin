@@ -199,43 +199,49 @@ If a matching pipeline exists, ask the user if they want to edit it or add objec
 
 If the user still wants a separate pipeline, you MUST ask them to explicitly confirm that they want a separate destination schema prefix before creating it.
 
-If creating a new pipeline, browse the source catalog and choose which objects (tables) to sync:
+If creating a new pipeline, follow these sub-steps in order:
+
+**6a. Ask for pipeline name.** Suggest a default (e.g., `sql_server_to_snowflake`) but let the user override.
+
+**6b. Browse source catalog and select objects.**
 
 ```bash
-# Export discovered objects
-supaflow datasources catalog <source-identifier> --output objects.json
+supaflow datasources catalog <source-identifier> --output /tmp/objects.json
+# Parse and present available objects
+```
 
-# Edit objects.json: set "selected": false for objects to exclude
+Ask the user which objects to include. Edit `/tmp/objects.json` to set `"selected": false` for excluded objects. Each entry must have `fully_qualified_name`, `selected`, and `fields` (null = all fields).
 
-# Create the pipeline
+**6c. ALWAYS run `pipelines init` to generate config.** This is mandatory, not optional.
+
+```bash
+supaflow pipelines init --source <source> --project <project> --output /tmp/pipeline-config.json --json
+```
+
+**6d. Read and present the ACTUAL config values from the generated file.** Show:
+- Pipeline prefix (CANNOT be changed after creation)
+- Ingestion mode
+- Load mode
+- Schema evolution
+- Hard deletes
+
+NEVER manually derive defaults from capabilities. NEVER say "auto-generated prefix" without showing the actual value from the file.
+
+**6e. Wait for explicit user confirmation.** This is a hard gate. If the user requests changes, edit the config file, re-read it, show ALL final values, and ask again. NEVER treat a partial edit as blanket approval.
+
+**6f. Create the pipeline.**
+
+```bash
 supaflow pipelines create \
   --name "<Pipeline Name>" \
   --source <source-identifier> \
   --project <project-identifier> \
-  --objects objects.json \
+  --config /tmp/pipeline-config.json \
+  --objects /tmp/objects.json \
   --json
 ```
 
-**Before running create, read source and destination capabilities** (from `datasources get` -- see the supaflow-pipelines skill for full details) and **present only valid options to the user**. Show the capability defaults and wait for their response:
-- Destination schema prefix (auto-generated, CANNOT be changed later)
-- Ingestion mode (from **source** capabilities `supported_values`)
-- Load mode (from **destination** capabilities `supported_values`)
-- Schema evolution (from **destination** capabilities `supported_values`)
-
-This is a hard confirmation gate. Do NOT say "I'll use the defaults" and continue. The user must explicitly approve the settings, including the default schema prefix, before `pipelines create`.
-
-After the user confirms, use `pipelines init` to generate a valid config file, then edit if the user requested changes:
-
-```bash
-# Generate capability-aware config (resolves destination from project)
-supaflow pipelines init --source <source> --project <project> --output /tmp/pipeline-config.json --json
-
-# If user requested changes, edit the config file
-# Then create the pipeline
-supaflow pipelines create --source <source> --project <project> --config /tmp/pipeline-config.json --objects /tmp/objects.json --json
-```
-
-If the user accepted all defaults, you can skip `pipelines init` and omit `--config`. If `--objects` is omitted, all discovered objects are selected.
+If create fails with a duplicate constraint: STOP, show the error, ask what to do. NEVER silently rename or auto-increment.
 
 ### Step 7: Run the First Sync
 

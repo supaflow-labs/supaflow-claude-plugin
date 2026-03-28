@@ -73,6 +73,8 @@ supaflow jobs get <job-id> --json
 # Returns: job header + object_details with per-object metrics
 ```
 
+**IMPORTANT: In polling loops, NEVER use `status` as a shell variable name.** It is a read-only builtin in zsh. Use `job_status` or `poll_status` instead.
+
 **Use `jobs status` (not `jobs get`) for polling.** While a job is running, `job_response` is null and the payload is ~100 bytes. After terminal state, `job_response` includes summary counts (total_objects, total_rows_source, total_rows_destination, total_failed, total_skipped). Use `jobs get` only when you need per-object stage metrics.
 
 Job details (only in terminal state) include per-object metrics showing the three-stage pipeline execution:
