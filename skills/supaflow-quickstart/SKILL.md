@@ -23,31 +23,32 @@ Do NOT ask for API keys, credentials, or connection details yet. The steps below
 
 ## Step 0: Read Connector Documentation
 
-**Before building anything, understand what you're building.** Fetch the relevant connector docs for the source and destination the user mentioned. The docs explain prerequisites, configuration properties, sync modes, and troubleshooting.
+**Before building anything, understand what you're building.** Read the relevant connector docs for the source and destination the user mentioned. The docs explain prerequisites, configuration properties, sync modes, and troubleshooting.
 
 ```bash
-# Fetch the full Supaflow docs (single markdown file, ~380KB)
-curl -s https://www.supa-flow.io/docs/llms/docs.txt > /tmp/supaflow-docs.txt
+# Save source connector docs to a file (do NOT dump full docs into context)
+supaflow docs <source-type> --output /tmp/source-docs.txt
+# Read only the sections you need (prerequisites, configuration, query modes)
+
+# Save destination connector docs
+supaflow docs <destination-type> --output /tmp/dest-docs.txt
+
+# Save pipeline configuration docs
+supaflow docs pipelines --output /tmp/pipeline-docs.txt
 ```
 
-**Do NOT load the entire file into context -- it's ~11K lines.** Instead, search for the relevant sections:
-- Each doc page is delimited by `<!-- Source: URL -->` comments
-- Search for the source connector section (e.g., `grep -n "Source: .*sqlserver" /tmp/supaflow-docs.txt`)
-- Search for the destination section (e.g., `grep -n "Source: .*snowflake" /tmp/supaflow-docs.txt`)
-- Read only those sections (use `sed -n 'START,ENDp'`)
+The `docs` command fetches and caches documentation locally (24h TTL), then returns only the relevant section. **Always use `--output` to save to a file, then read only the subsections you need.** Connector docs can be 400+ lines -- do not dump the entire output into the conversation.
 
-**Key pages by connector:**
+**Examples for a SQL Server to Snowflake pipeline:**
+```bash
+supaflow docs sqlserver --output /tmp/sqlserver-docs.txt
+# Then read prerequisites and CT configuration sections from the file
 
-| Connector | URL path | What to look for |
-|-----------|----------|------------------|
-| SQL Server | `sources/sqlserver` | Query Mode (STANDARD vs CHANGE_TRACKING), CT setup SQL |
-| PostgreSQL | `sources/postgres` | Sync modes, replication setup |
-| Salesforce | `sources/salesforce` | OAuth setup, API limits |
-| HubSpot | `sources/hubspot` | Supported objects, rate limiting |
-| Snowflake | `destinations/snowflake` | Auth methods, warehouse/role setup |
-| S3 | `destinations/s3` | IAM role, bucket config, file format |
-| S3 Data Lake | `destinations/s3-data-lake` | Iceberg/Parquet, Glue catalog |
-| Pipelines | `ingestion-pipelines` | Sync settings, load modes, schema evolution |
+supaflow docs snowflake --output /tmp/snowflake-docs.txt
+# Then read auth methods and setup sections from the file
+```
+
+Use `supaflow docs --list` to see all available topics. Aliases are supported: `sql_server`, `postgres`, `sfmc`, `otm`, `iceberg`, etc.
 
 After reading the docs, you'll know:
 - What prerequisites the user needs (DB users, permissions, firewall rules)

@@ -35,18 +35,22 @@ All commands require prior authentication and workspace selection (see the supaf
 
 ## Connector Setup Guides
 
-Each connector may require prerequisites (user accounts, permissions, network access, API keys). If the user needs help with setup, **fetch the Supaflow docs** which contain connector-specific setup guides with SQL scripts, configuration steps, and required permissions:
+Each connector may require prerequisites (user accounts, permissions, network access, API keys). Use the `docs` command to read connector-specific setup guides:
 
 ```bash
-# Fetch docs to a temp file (single markdown file, ~380KB, ~11K lines)
-curl -s https://www.supa-flow.io/docs/llms/docs.txt > /tmp/supaflow-docs.txt
+# Save connector docs to a file, then read only the sections you need
+supaflow docs sqlserver --output /tmp/sqlserver-docs.txt     # CT setup, prerequisites
+supaflow docs snowflake --output /tmp/snowflake-docs.txt     # Auth methods, warehouse setup
+supaflow docs postgres --output /tmp/postgres-docs.txt       # Replication, sync modes
+supaflow docs s3-data-lake --output /tmp/s3dl-docs.txt       # Iceberg/Parquet, Glue catalog
 
-# Do NOT load the entire file -- search for the relevant connector section:
-grep -n "Source: .*sqlserver\|Source: .*snowflake\|Source: .*postgres" /tmp/supaflow-docs.txt
-# Then read only that section with sed -n 'START,ENDp' /tmp/supaflow-docs.txt
+# List all available topics
+supaflow docs --list
 ```
 
-Each doc page is delimited by `<!-- Source: URL -->` comments. Read only the sections relevant to the user's connectors. The docs contain:
+**Always use `--output`** to save to a file, then read only the relevant subsections. Do NOT dump full connector docs into the conversation.
+
+The docs contain:
 - Required database users and permissions (e.g., CREATE USER, GRANT SELECT)
 - Snowflake warehouse/role setup scripts
 - S3 bucket and IAM role configuration
@@ -54,7 +58,7 @@ Each doc page is delimited by `<!-- Source: URL -->` comments. Read only the sec
 - Network access and firewall rules
 - **Connector-specific properties** (Query Mode for SQL Server, replication for PostgreSQL, etc.)
 
-If the user hasn't set up the source/destination system yet, fetch the docs and help them through the setup before creating the datasource in Supaflow.
+If the user hasn't set up the source/destination system yet, read the docs and help them through the setup before creating the datasource in Supaflow.
 
 **Connector properties vs pipeline config:** Features like Change Tracking (SQL Server), Iceberg/Parquet/Glue (S3), CDC mode (PostgreSQL), and authentication method are **connector properties** -- they live in the datasource config, NOT in the pipeline. Use `datasources get <id> --json` to inspect them. Pipeline config only controls ingestion mode, load mode, schema evolution, etc.
 

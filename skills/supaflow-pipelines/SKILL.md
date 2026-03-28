@@ -275,9 +275,10 @@ Note: `ACTIVATION` pipelines always enforce `BLOCK_ALL` schema evolution.
 
 If the user asks about Change Tracking, Iceberg, Parquet, Glue, or other connector-specific features, inspect the datasource config with `datasources get <identifier> --json` and look at the `configs` object. Do NOT look for these in pipeline config.
 
-For connector setup guides and available properties, fetch the Supaflow docs:
+For connector setup guides and available properties:
 ```bash
-curl -s https://www.supa-flow.io/docs/llms/docs.txt
+supaflow docs <connector-type> --output /tmp/<connector>-docs.txt
+# Then read the relevant sections from the file
 ```
 
 ## Running a Pipeline
