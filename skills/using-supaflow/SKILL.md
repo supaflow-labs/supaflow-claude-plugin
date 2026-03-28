@@ -93,14 +93,14 @@ Use these commands for the corresponding user intents. Commands have tool restri
 | Sync a pipeline / run a sync | `/sync-pipeline` |
 | Schedule a pipeline | `/create-schedule` |
 
-If the user's request spans multiple commands (e.g., "set up a pipeline from scratch"), execute them in order:
-1. Check auth (every command does this automatically)
-2. `/create-datasource` for any missing datasources
-3. `/create-pipeline` (includes project resolution, object selection, config confirmation)
-4. `/sync-pipeline` to trigger the first sync and verify data
-5. `/create-schedule` if the user wants recurring syncs
+If the user's request spans multiple commands (e.g., "build a pipeline", "set up a pipeline from scratch"), **start with `/create-pipeline`** -- it checks for existing datasources and only needs `/create-datasource` if something is missing:
 
-Do NOT combine these into a single freeform workflow. Execute each command in sequence.
+1. `/create-pipeline` -- this is the primary entrypoint. It lists existing datasources, checks for duplicates, and handles project resolution. Only if a required source or destination datasource is missing, branch to step 2.
+2. `/create-datasource` -- only if `/create-pipeline` identified a missing datasource. Then return to `/create-pipeline`.
+3. `/sync-pipeline` -- to trigger the first sync and verify data.
+4. `/create-schedule` -- if the user wants recurring syncs.
+
+**Do NOT start with `/create-datasource` when the user asks to "build a pipeline."** The user's intent is pipeline creation, not datasource creation. `/create-pipeline` handles datasource discovery internally.
 
 ## Before Any Supaflow Operation
 

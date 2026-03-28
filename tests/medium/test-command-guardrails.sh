@@ -26,6 +26,9 @@ assert_file_contains "$F" "d.get('pipeline_prefix'" "create-pipeline: reads pipe
 assert_file_contains "$F" "fully_qualified_name.*selected.*fields" "create-pipeline: objects file uses {fully_qualified_name, selected, fields} shape"
 assert_file_contains "$F" "Object Scope" "create-pipeline: contains Object Scope section"
 assert_file_contains "$F" "all discovered objects.*choose a subset\|all objects.*subset" "create-pipeline: asks all-vs-subset question"
+assert_file_contains "$F" "Which objects do you want to include" "create-pipeline: subset asks INCLUDE not exclude"
+assert_file_contains "$F" "does NOT mean exclude" "create-pipeline: warns against include/exclude misinterpretation"
+assert_file_contains "$F" "Typo check on custom prefix" "create-pipeline: flags typos in permanent prefix"
 echo ""
 
 # --- create-datasource.md ---

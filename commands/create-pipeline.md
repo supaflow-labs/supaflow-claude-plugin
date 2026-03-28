@@ -198,6 +198,8 @@ Ask: "This is the final config. Proceed with pipeline creation?" Only continue a
 
 **NEVER treat a partial edit request as blanket approval to create.** Every change requires re-displaying all final values and a new explicit confirmation.
 
+**Typo check on custom prefix:** If the user provides a custom `pipeline_prefix` that looks like a misspelling of the source connector name or datasource name (e.g., `googel` vs `google`, `salseforce` vs `salesforce`), flag it before confirming: "The prefix you entered is `<value>` -- did you mean `<corrected>`? This cannot be changed after creation." The prefix is permanent, so catching typos here prevents a permanent mistake.
+
 ## Step 9: Object Scope (REQUIRED)
 
 Object scope is a required decision. Do NOT silently default to all objects.
@@ -234,18 +236,19 @@ print(f'Total: {len(objs)} objects')
 "
 ```
 
-3. Ask the user which objects to exclude.
+3. Ask the user: **"Which objects do you want to include?"** Frame this as an INCLUDE question, not an exclude question. The user's answer is the list of objects to keep.
 
-4. Edit the file in place -- set `selected: false` for excluded objects. Do NOT rewrite the file from scratch:
+**IMPORTANT: When the user says "just X and Y", that means INCLUDE only X and Y. It does NOT mean exclude X and Y. This is the most common misinterpretation -- get it right.**
+
+4. Edit the file in place -- set `selected: false` for everything EXCEPT the user's chosen objects. Do NOT rewrite the file from scratch:
 ```bash
 python3 -c "
 import json
 with open('/tmp/pipeline-objects.json') as f:
     objs = json.load(f)
-exclude = ['dbo.system_table_1', 'dbo.system_table_2']
+include = ['dbo.customers', 'dbo.orders']  # objects the user wants to INCLUDE
 for o in objs:
-    if o['fully_qualified_name'] in exclude:
-        o['selected'] = False
+    o['selected'] = o['fully_qualified_name'] in include
 with open('/tmp/pipeline-objects.json', 'w') as f:
     json.dump(objs, f, indent=2)
 selected = sum(1 for o in objs if o['selected'])
