@@ -28,36 +28,9 @@ Do NOT proceed to Step 2 until Step 1 succeeds.
 
 Cannot run `npm install` -- this command is tool-restricted.
 
-## Step 2: Check Existing Datasources (MANDATORY -- run BEFORE asking for any credentials)
+## Step 2: Resolve Connector Type and Read Documentation
 
-**ALWAYS run this before doing anything else related to credentials or creation.**
-
-```bash
-supaflow datasources list --json | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
-items = d.get('data', [])
-if not items: print('No existing datasources found.')
-else:
-    print(f'Found {len(items)} existing datasource(s):')
-    for ds in items:
-        print(f\"  {ds['name']} | connector={ds.get('connector_type','?')} | api_name={ds.get('api_name','?')} | state={ds.get('state','?')}\")
-"
-```
-
-Review the output carefully:
-
-- If the user passed `[connector-type]` as an argument, filter the list by that connector type.
-- If a datasource of the requested type already exists, tell the user and ask: "You already have a `<TYPE>` datasource called `<name>` (api_name: `<api_name>`). Would you like to reuse it, or create a new one?"
-- If multiple datasources of the same type exist, list all of them and ask which to use. NEVER assume which to use.
-- If the user wants to reuse an existing datasource, STOP here -- no need to create.
-- Only continue to Step 3 if the user confirms they want to create a new datasource.
-
-**GUARDRAIL: You MUST NOT ask for any connection credentials before completing this step.**
-
-## Step 3: Read Connector Documentation and Validate Prerequisites
-
-**MUST read the connector doc before asking for any datasource config.** Do not rely on memory -- the doc is the source of truth for prerequisites, required credentials, and connector-specific caveats.
+**MUST read the connector doc FIRST -- before checking existing datasources or asking for any config.** The doc is the source of truth for prerequisites, required credentials, and connector-specific caveats. Reading it first ensures you know what to look for when inspecting existing datasources.
 
 1. Resolve the connector type. If the user passed `[connector-type]` as an argument, use that. If not, ask. Map common names to doc topics: `sql_server` -> `sqlserver`, `s3` -> `s3` or `s3-data-lake`, `postgres` -> `postgres`, etc.
 
@@ -83,7 +56,7 @@ Are these already done, or do you need help setting any of them up?
 ```
 
 5. Wait for the user's response:
-   - **All done:** Proceed to Step 4.
+   - **All done:** Proceed to Step 3.
    - **Need help:** Walk the user through the prerequisite steps using the doc content. This command can run prerequisite CLIs directly:
      - `snow sql` -- Snowflake user/role/warehouse/database creation
      - `aws iam`, `aws s3` -- IAM roles, S3 bucket policies
@@ -93,15 +66,41 @@ Are these already done, or do you need help setting any of them up?
      - `sqlcmd` -- SQL Server user/permission setup
      - `mysql` -- MySQL user/permission setup
      Execute the prerequisite commands from the docs when the user confirms. Ask before running each destructive operation (CREATE ROLE, CREATE USER, etc.).
-   - **Explicitly deferred:** The user says "skip prerequisites" or "I'll handle that later." Acknowledge the risk and proceed to Step 4.
+   - **Explicitly deferred:** The user says "skip prerequisites" or "I'll handle that later." Acknowledge the risk and proceed to Step 3.
 
 **GUARDRAIL: Do NOT proceed to datasource creation until prerequisites are confirmed complete or explicitly deferred by the user.**
 
 **GUARDRAIL: Save docs to a file and read locally. Do NOT dump full doc content into the conversation.**
 
+## Step 3: Check Existing Datasources
+
+**Run this AFTER reading docs so you know what to look for** (e.g., whether an existing datasource has the right query mode or auth method).
+
+```bash
+supaflow datasources list --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
+items = d.get('data', [])
+if not items: print('No existing datasources found.')
+else:
+    print(f'Found {len(items)} existing datasource(s):')
+    for ds in items:
+        print(f\"  {ds['name']} | connector={ds.get('connector_type','?')} | api_name={ds.get('api_name','?')} | state={ds.get('state','?')}\")
+"
+```
+
+- If a datasource of the requested type already exists, tell the user and ask: "You already have a `<TYPE>` datasource called `<name>`. Would you like to reuse it, or create a new one?"
+- If multiple same-type datasources exist, list all and ask which to use. NEVER assume.
+- If the user wants to reuse: STOP here -- no need to create.
+- Only continue to Step 4 if the user confirms they want a new datasource.
+
+**When reusing an existing datasource:** Use the connector doc knowledge from Step 2 to verify the existing datasource has the right settings. Run `datasources get <api_name> --json` and check connector-specific config properties (e.g., `queryMode: CHANGE_TRACKING` for SQL Server CT).
+
+**GUARDRAIL: You MUST NOT ask for any connection credentials before completing this step.**
+
 ## Step 4: Scaffold the Env File
 
-Determine the connector type (already resolved in Step 3).
+Determine the connector type (already resolved in Step 2).
 
 Common connector types: `POSTGRES`, `SNOWFLAKE`, `S3`, `HUBSPOT`, `SALESFORCE`, `AIRTABLE`, `ORACLE_TM`, `SFMC`, `SQL_SERVER`, `GOOGLE_DRIVE`.
 
@@ -283,7 +282,7 @@ Common failure causes and fixes:
 - **SSL error**: Check sslMode setting in the env file
 - **API credential invalid**: OAuth token expired or client ID/secret wrong
 
-After identifying the issue, guide the user to fix the env file (Step 6) and retry creation (Step 7).
+After identifying the issue, guide the user to fix the env file and retry creation (Step 8).
 
 ---
 
