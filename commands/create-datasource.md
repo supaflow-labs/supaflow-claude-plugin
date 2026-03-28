@@ -288,8 +288,10 @@ After identifying the issue, guide the user to fix the env file and retry creati
 
 ## Guardrails Summary
 
-- **MUST** run `datasources list` before asking for any credentials (Step 2 is mandatory)
+- **MUST** read connector docs before checking existing datasources or asking for config (Step 2)
+- **MUST** validate prerequisites from docs and confirm readiness before proceeding (Step 2)
+- **MUST** run `datasources list` before asking for any credentials (Step 3)
 - **MUST NOT** ask for passwords, secrets, tokens, private keys, or any `(sensitive)` field in chat
 - **MUST NOT** dump full JSON responses -- always use `python3 -c` to extract only what is needed
-- **MUST** wait for user confirmation that sensitive fields are filled before running `datasources create`
+- **MUST** show final confirmation summary and wait for explicit approval before `datasources create` (Step 8)
 - When multiple same-type datasources exist, list all and ask -- NEVER assume which to use
