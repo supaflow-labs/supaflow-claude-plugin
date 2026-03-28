@@ -5,7 +5,7 @@ set -euo pipefail
 # version, is authenticated, and has a workspace selected.
 # Outputs structured JSON so the Claude harness injects context into the session.
 
-MIN_CLI_VERSION="0.1.9"
+MIN_CLI_VERSION="0.1.10"
 
 OPERATING_RULES="Supaflow CLI Operating Rules:
 - Always run datasources list before asking for credentials or creating datasources.

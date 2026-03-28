@@ -21,7 +21,7 @@ claude --plugin-dir /path/to/supaflow-claude-plugin
 
 On first session after install, a setup hook verifies:
 - Node.js 18+ is installed
-- Supaflow CLI is installed and meets the minimum version (v0.1.9+)
+- Supaflow CLI is installed and meets the minimum version (v0.1.10+)
 - CLI is authenticated with a valid API key
 - A workspace is selected
 
