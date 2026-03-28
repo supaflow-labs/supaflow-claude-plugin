@@ -1,0 +1,11 @@
+{
+  "data": [{
+    "id": "p-001", "name": "sql_server_to_snowflake", "api_name": "sql_server_to_snowflake",
+    "state": "active", "created_at": "2026-03-01T00:00:00.000Z", "updated_at": "2026-03-28T10:05:30.000Z",
+    "source": { "datasource_id": "ds-src-001", "name": "my_sql_server", "connector_name": "SQL Server" },
+    "destination": { "datasource_id": "ds-dst-001", "name": "my_snowflake", "connector_name": "Snowflake" },
+    "project": { "id": "proj-001", "name": "snowflake_project" },
+    "last_sync_at": "2026-03-28T10:05:30.000Z", "last_job_status": "completed", "schedules": []
+  }],
+  "total": 1, "limit": 50, "offset": 0
+}

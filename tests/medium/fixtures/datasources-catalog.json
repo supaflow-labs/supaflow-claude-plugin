@@ -1,0 +1,7 @@
+{
+  "data": [
+    { "fully_qualified_name": "my_database.dbo.customers", "catalog_version": 1, "updated_at": "2026-03-28T00:00:00.000Z" },
+    { "fully_qualified_name": "my_database.dbo.orders", "catalog_version": 1, "updated_at": "2026-03-28T00:00:00.000Z" }
+  ],
+  "total": 2, "limit": 50, "offset": 0
+}

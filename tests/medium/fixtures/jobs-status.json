@@ -1,0 +1,12 @@
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "job_status": "completed",
+  "status_message": "Pipeline sync completed successfully",
+  "job_response": {
+    "total_objects": 5,
+    "total_rows_source": 12500,
+    "total_rows_destination": 12500,
+    "total_failed": 0,
+    "total_skipped": 0
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "data": [{
+    "id": "ds-src-001", "name": "my_sql_server", "api_name": "my_sql_server",
+    "state": "active", "description": null,
+    "connector_name": "SQL Server", "connector_type": "SOURCE", "connector_vendor": "Microsoft",
+    "workspace_id": "ws-001",
+    "created_at": "2026-03-01T00:00:00.000Z", "updated_at": "2026-03-28T00:00:00.000Z",
+    "user_access_level": "owner",
+    "source_pipeline_count": 1, "destination_pipeline_count": 0, "total_pipeline_count": 1
+  }],
+  "total": 1, "limit": 50, "offset": 0
+}

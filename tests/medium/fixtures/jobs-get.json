@@ -1,0 +1,42 @@
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "Pipeline Run - my_pipeline",
+  "job_type": "pipeline_run",
+  "job_status": "completed",
+  "job_command": null,
+  "status_message": "Pipeline sync completed successfully",
+  "reference_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "reference_type": "pipeline",
+  "started_at": "2026-03-28T10:00:00.000Z",
+  "ended_at": "2026-03-28T10:05:30.000Z",
+  "execution_duration_ms": 330000,
+  "created_at": "2026-03-28T09:59:55.000Z",
+  "updated_at": "2026-03-28T10:05:30.000Z",
+  "job_response": { "total_objects": 5, "total_rows_source": 12500, "total_rows_destination": 12500, "total_failed": 0, "total_skipped": 0 },
+  "object_details": [
+    {
+      "id": "od-001",
+      "fully_qualified_source_object_name": "dbo.customers",
+      "ingestion_status": "completed",
+      "staging_status": "completed",
+      "loading_status": "completed",
+      "ingestion_metrics": { "output_row_count": 5000 },
+      "staging_metrics": { "output_row_count": 5000 },
+      "loading_metrics": { "output_row_count": 5000 },
+      "job_status": "completed",
+      "status_message": null
+    },
+    {
+      "id": "od-002",
+      "fully_qualified_source_object_name": "dbo.orders",
+      "ingestion_status": "completed",
+      "staging_status": "completed",
+      "loading_status": "completed",
+      "ingestion_metrics": { "output_row_count": 7500 },
+      "staging_metrics": { "output_row_count": 7500 },
+      "loading_metrics": { "output_row_count": 7500 },
+      "job_status": "completed",
+      "status_message": null
+    }
+  ]
+}

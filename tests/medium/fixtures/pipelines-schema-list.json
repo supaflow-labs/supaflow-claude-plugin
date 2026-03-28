@@ -1,0 +1,8 @@
+{
+  "data": [
+    { "object": "dbo.customers", "selected": true, "total_fields": 15, "selected_fields": 15, "origin": "explicit" },
+    { "object": "dbo.orders", "selected": true, "total_fields": 22, "selected_fields": 22, "origin": "explicit" },
+    { "object": "dbo.products", "selected": false, "total_fields": 10, "selected_fields": 0, "origin": null }
+  ],
+  "total": 3, "limit": 50, "offset": 0
+}

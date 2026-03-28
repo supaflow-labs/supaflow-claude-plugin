@@ -1,5 +1,5 @@
 {
-  "description": "Verify Supaflow CLI setup on session start",
+  "description": "Verify Supaflow CLI setup and inject operating rules on session start",
   "hooks": {
     "SessionStart": [
       {
