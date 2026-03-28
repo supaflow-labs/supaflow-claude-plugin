@@ -224,22 +224,18 @@ supaflow pipelines create \
 
 This is a hard confirmation gate. Do NOT say "I'll use the defaults" and continue. The user must explicitly approve the settings, including the default schema prefix, before `pipelines create`.
 
-After the user confirms the settings, record that confirmation before running create:
+After the user confirms, use `pipelines init` to generate a valid config file, then edit if the user requested changes:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/record_pipeline_create_confirmation.py \
-  --name "<Pipeline Name>" \
-  --source <source-identifier> \
-  --project <project-identifier> \
-  --prefix "<confirmed-prefix>" \
-  --ingestion-mode "<confirmed-ingestion-mode>" \
-  --load-mode "<confirmed-load-mode>" \
-  --schema-evolution-mode "<confirmed-schema-evolution-mode>" \
-  --duplicate-approved <true-or-false> \
-  --confirmation-text "<short quote or summary of the user's reply>"
+# Generate capability-aware config (resolves destination from project)
+supaflow pipelines init --source <source> --project <project> --output /tmp/pipeline-config.json --json
+
+# If user requested changes, edit the config file
+# Then create the pipeline
+supaflow pipelines create --source <source> --project <project> --config /tmp/pipeline-config.json --objects /tmp/objects.json --json
 ```
 
-If the user wants non-default settings, create `--config pipeline-config.json` with their overrides. If `--objects` is omitted, all discovered objects are selected.
+If the user accepted all defaults, you can skip `pipelines init` and omit `--config`. If `--objects` is omitted, all discovered objects are selected.
 
 ### Step 7: Run the First Sync
 

@@ -140,7 +140,7 @@ Only proceed to `pipelines create` after the user responds. If the user says "de
 
 ### Pipeline Prefix (Destination Schema Name)
 
-The default prefix is the **lowercased source connector type** (e.g., `sqlserver`, `postgres`, `hubspot`). If a pipeline with that prefix already exists for the same destination, the system appends a number (`sqlserver_2`, `sqlserver_3`, etc.).
+The default prefix is the **lowercased source connector type** (e.g., `sqlserver`, `postgres`, `hubspot`).
 
 When presenting options, compute the default: take the source datasource's `connector_type` from `datasources list` and lowercase it.
 
