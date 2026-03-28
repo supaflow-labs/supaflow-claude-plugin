@@ -9,7 +9,7 @@ description: Use when you need reference information about Supaflow pipeline con
 
 Pipelines move data from a source datasource to a destination warehouse. Each pipeline belongs to a project (which defines the destination) and selects which objects to sync.
 
-All commands require prior authentication and workspace selection .
+All CLI commands require authentication and an active workspace.
 
 ## Projects
 
@@ -39,7 +39,7 @@ for p in d['data']:
 
 **Match projects by `warehouse_datasource_id`** (not `warehouse_name` which is a display label and may not be unique). Compare against the destination datasource's `id` from `datasources list`. If a project already exists for that destination ID, use it. Only create a new project if none matches.
 
-## Before Creating a Pipeline
+## Pipeline Configuration Options
 
 **Always check for existing pipelines between the same source and destination first.** Duplicate pipelines writing to the same destination schema cause merge conflicts and data corruption.
 
@@ -62,9 +62,9 @@ Review the results for pipelines with the same source and destination. If one ex
 
 Only create a new pipeline if no existing pipeline covers the same source-destination pair, or the user explicitly confirms they want a separate one.
 
-## Creating a Pipeline
+## Pipeline Create CLI Reference
 
-**MANDATORY: Before running `pipelines create`, read source and destination capabilities, then present only valid options to the user.** Do NOT silently use defaults. Do NOT show options the connectors don't support.
+Before running `pipelines create`, read source and destination capabilities to determine which options are valid. Do NOT silently use defaults. Do NOT show options the connectors don't support.
 
 ### Reading Connector Capabilities
 
@@ -107,19 +107,13 @@ Each setting is controlled by either the source, destination, or both:
 
 For "both" settings: `enabled` requires AND of both connectors, `supported_values` uses intersection. Only highlight a default if it appears in the intersection -- if it doesn't, present the intersection without a pre-selected default and ask the user to choose.
 
-### Presenting Options to the User
+### Config Value Examples
 
-**STOP AND WAIT: After reading capabilities, you MUST present the options below and STOP. Do NOT run `pipelines create` or any other tool until the user replies.** This is a confirmation gate -- the user must explicitly approve or modify the settings before you proceed. This includes the default destination schema prefix. Silence is not approval.
-
-Present a summary showing only valid options (from capabilities) with defaults highlighted:
-
-The default prefix is the lowercased `connector_type` of the source datasource. Compute it from `datasources list` output (e.g., `SQLSERVER` -> `sqlserver`, `POSTGRES` -> `postgres`).
+Example of how config values look with valid options from capabilities:
 
 ```
-Before I create the pipeline, please review these settings:
-
-Destination schema prefix: sqlserver (auto-generated from source connector type)
-  ** This CANNOT be changed after creation. Want a different prefix? **
+Destination schema prefix: sqlserver (lowercased source connector type)
+  ** Cannot be changed after creation **
 
 Ingestion mode: HISTORICAL_PLUS_INCREMENTAL (default)
   Other options: INCREMENTAL, HISTORICAL
@@ -130,10 +124,9 @@ Load mode: MERGE (default)
 Schema evolution: ALLOW_ALL (default)
   Other options: BLOCK_ALL, COLUMN_LEVEL_ONLY
 
-Are these settings OK, or would you like to change any?
 ```
 
-Only proceed to `pipelines create` after the user responds. If the user says "defaults are fine" or similar, skip the config file. Otherwise, create a config JSON with their overrides.
+The `/create-pipeline` command handles presenting these options and collecting user confirmation.
 
 ### Pipeline Prefix (Destination Schema Name)
 
@@ -415,7 +408,7 @@ supaflow pipelines get production_to_warehouse
 supaflow pipelines sync production_to_warehouse --json
 ```
 
-## Common Agent Patterns
+## Common Operations
 
 ### Create pipeline with selected objects
 

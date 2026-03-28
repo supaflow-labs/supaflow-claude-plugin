@@ -9,7 +9,7 @@ description: Use when you need reference information about Supaflow job lifecycl
 
 Jobs are async execution records created by pipeline syncs, datasource tests, and schema refreshes. Every `pipelines sync`, `datasources create`, `datasources test`, and `datasources refresh` command creates a job.
 
-All commands require prior authentication and workspace selection .
+All CLI commands require authentication and an active workspace.
 
 ## Listing Jobs
 
@@ -185,7 +185,7 @@ When a job fails, follow this sequence:
    supaflow pipelines sync <identifier> --full-resync --reset-target --json
    ```
 
-## Common Agent Patterns
+## Common Operations
 
 ### Trigger sync and poll for completion
 

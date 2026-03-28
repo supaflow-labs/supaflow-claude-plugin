@@ -21,3 +21,5 @@ Known failure modes from real sessions, tied to the tests that now cover them.
 | Silently renamed pipeline after duplicate constraint | Early plugin sessions | medium/test-command-guardrails.sh: create-pipeline has duplicate stop language |
 | Blindly retried failed job with "transient issue" explanation | Early plugin sessions | medium/test-command-guardrails.sh: explain-job-failure has no blind retry language |
 | Treated partial edit as blanket approval | Early plugin sessions | commands/create-pipeline.md: explicit confirmation guardrail |
+| Defaulted to all objects without asking | Session 6c4fbb21 | medium/test-command-guardrails.sh: create-pipeline contains Object Scope |
+| Used nonexistent `jobs run` command for sync | Session 6c4fbb21 | medium/test-command-guardrails.sh: sync-pipeline contains pipelines sync |

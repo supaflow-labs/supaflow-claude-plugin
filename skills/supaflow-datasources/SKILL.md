@@ -19,7 +19,7 @@ sslMode=prefer
 
 Manage datasource connections to external systems (databases, APIs, cloud storage). Each datasource stores encrypted connection credentials and discovers the source schema automatically.
 
-All commands require prior authentication and workspace selection .
+All CLI commands require authentication and an active workspace.
 
 ## Connector Setup Guides
 
@@ -50,9 +50,9 @@ If the user hasn't set up the source/destination system yet, read the docs and h
 
 **Connector properties vs pipeline config:** Features like Change Tracking (SQL Server), Iceberg/Parquet/Glue (S3), CDC mode (PostgreSQL), and authentication method are **connector properties** -- they live in the datasource config, NOT in the pipeline. Use `datasources get <id> --json` to inspect them. Pipeline config only controls ingestion mode, load mode, schema evolution, etc.
 
-## Before Creating a Datasource (MANDATORY)
+## Datasource Configuration Reference
 
-**ALWAYS run `datasources list` FIRST. This is not optional.** Do this before asking the user for ANY connection details.
+Run `datasources list` before asking the user for connection details. This surfaces existing datasources that may already cover the requested connection.
 
 ```bash
 supaflow datasources list --json | python3 -c "
@@ -69,15 +69,15 @@ Review the list and tell the user what already exists. For example:
 - "You already have a SQL Server source called 'SQL Server' (api_name: sql_server_qdvbd4). Want to use it or create a new one?"
 - "You have 3 Snowflake destinations. Which one should I use for this pipeline?"
 
-**Only proceed with creation if no suitable datasource exists or the user explicitly wants a new one.** Do NOT ask for credentials before checking.
+Only proceed with creation if no suitable datasource exists or the user explicitly wants a new one.
 
 **When reusing an existing datasource:** If the user mentioned connector-specific features (Change Tracking, CDC, Iceberg, Parquet, etc.), run `datasources get <api_name> --json` to inspect the `configs` object and verify the feature is enabled BEFORE proceeding. Do NOT assume existing datasources have the right settings.
 
-## Datasource Creation (Two-Step Process)
+## Datasource CLI Reference
 
-### Step 1: Scaffold the Env File
+### Scaffolding an Env File
 
-Generate a connector-specific env file with all available properties:
+The `datasources init` command generates a connector-specific env file with all available properties:
 
 ```bash
 supaflow datasources init --connector <TYPE> --name "<Display Name>" --json
@@ -109,9 +109,9 @@ supaflow connectors list --json
 
 Common types: `POSTGRES`, `SNOWFLAKE`, `S3`, `HUBSPOT`, `SALESFORCE`, `AIRTABLE`, `ORACLE_TM`, `SFMC`, `SQL_SERVER`, `GOOGLE_DRIVE`.
 
-### Step 2: Fill Values and Create
+### Env File Format
 
-Edit the generated env file with connection details. Use `${VAR}` references for secrets to avoid storing them in cleartext:
+The env file supports `${VAR}` references for secrets to avoid storing them in cleartext:
 
 ```env
 host=db.example.com
@@ -123,13 +123,13 @@ password=${DB_PASSWORD}
 
 `${VAR}` references are resolved from the current shell environment at create time. If a plaintext secret is present, the CLI auto-encrypts it on disk before submission (the file is rewritten with `enc:` prefixed values).
 
-Create the datasource:
+The `datasources create` command auto-encrypts plaintext secrets and tests the connection before saving:
 
 ```bash
 supaflow datasources create --from <filename>.env --json
 ```
 
-This tests the connection first and only saves on success. The test may take up to a minute. On success, returns the created datasource object with its UUID and api_name.
+Returns the created datasource object with its UUID and api_name on success.
 
 ## Browsing the Catalog
 
@@ -315,7 +315,7 @@ supaflow datasources get 8a3f1b2c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
 supaflow datasources get my_postgres
 ```
 
-## Common Patterns for Agents
+## Common Operations
 
 ### Create a datasource non-interactively
 

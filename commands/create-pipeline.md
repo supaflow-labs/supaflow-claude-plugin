@@ -198,40 +198,94 @@ Ask: "This is the final config. Proceed with pipeline creation?" Only continue a
 
 **NEVER treat a partial edit request as blanket approval to create.** Every change requires re-displaying all final values and a new explicit confirmation.
 
-## Step 9: Prepare Object Selections (Optional)
+## Step 9: Object Scope (REQUIRED)
 
-If the user wants to select specific objects (not all discovered), create an objects file.
-First, browse available objects:
+Object scope is a required decision. Do NOT silently default to all objects.
 
+Ask the user: "Do you want to sync **all discovered objects**, or do you want to **choose a subset**?"
+
+Wait for the user's answer before proceeding.
+
+### Path A: All Objects
+
+If the user explicitly says "all objects" (or equivalent):
+- State clearly: "The pipeline will include all discovered objects. The `--objects` flag will be omitted, which selects everything from the source catalog."
+- Include this in the final confirmation summary (Step 10).
+- Do NOT pass `--objects` to `pipelines create`.
+
+### Path B: Choose Subset
+
+If the user wants to select specific objects:
+
+1. Export the catalog directly to the objects file. The CLI writes the correct `{ fully_qualified_name, selected, fields }` shape with all objects selected by default:
 ```bash
-supaflow datasources catalog <SOURCE_DATASOURCE_NAME> --json | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-for obj in d.get('data', []):
-    print(obj['fully_qualified_name'])
-"
+supaflow datasources catalog <SOURCE_DATASOURCE_NAME> --output /tmp/pipeline-objects.json --json
 ```
 
-Ask the user which objects to include. Then create a selection file using the `fully_qualified_name` from the catalog:
-
+2. Show the exported objects:
 ```bash
 python3 -c "
 import json
-# Each entry MUST have: fully_qualified_name (string), selected (boolean), fields (null = all fields)
-objects = [
-    {'fully_qualified_name': 'dbo.customers', 'selected': True, 'fields': None},
-    {'fully_qualified_name': 'dbo.orders', 'selected': True, 'fields': None}
-]
-json.dump(objects, open('/tmp/pipeline-objects.json', 'w'), indent=2)
+with open('/tmp/pipeline-objects.json') as f:
+    objs = json.load(f)
+for o in objs:
+    print(o['fully_qualified_name'])
+print(f'Total: {len(objs)} objects')
 "
 ```
 
-**Object file contract:** The CLI expects an array of `{ fully_qualified_name, selected, fields }`. Use `fully_qualified_name` (NOT `object` or `name`). Set `fields: null` to select all fields for that object.
+3. Ask the user which objects to exclude.
 
-If the user wants all objects, skip this step (omitting `--objects` selects all discovered objects by default).
+4. Edit the file in place -- set `selected: false` for excluded objects. Do NOT rewrite the file from scratch:
+```bash
+python3 -c "
+import json
+with open('/tmp/pipeline-objects.json') as f:
+    objs = json.load(f)
+exclude = ['dbo.system_table_1', 'dbo.system_table_2']
+for o in objs:
+    if o['fully_qualified_name'] in exclude:
+        o['selected'] = False
+with open('/tmp/pipeline-objects.json', 'w') as f:
+    json.dump(objs, f, indent=2)
+selected = sum(1 for o in objs if o['selected'])
+print(f'Selected: {selected}/{len(objs)} objects')
+"
+```
+
+5. Pass `--objects /tmp/pipeline-objects.json` to `pipelines create`.
 
 ## Step 10: Create the Pipeline
 
 The CLI requires `--name`, `--source`, and `--project`. Use `--config` for config overrides and `--objects` for object selections.
+
+Before creating, present the final confirmation summary including the object scope decision from Step 9:
+
+```
+Final confirmation:
+
+Pipeline name:      <PIPELINE_NAME>
+Source:             <SOURCE_DATASOURCE_API_NAME>
+Project:            <PROJECT_API_NAME>
+Pipeline prefix:    <actual value>  ** CANNOT be changed after creation **
+Ingestion mode:     <actual value>
+Load mode:          <actual value>
+Schema evolution:   <actual value>
+Hard deletes:       <actual value>
+Object scope:       all discovered objects (--objects omitted)
+```
+
+or if a subset was chosen:
+
+```
+Object scope:       <N> objects selected (via --objects file)
+```
+
+Ask: **"Proceed with pipeline creation?"** Wait for explicit yes. The object scope decision alone is NOT approval to create. This is the final gate.
+
+### Path B: Create with selected objects
+
+If the user chose a subset (Step 9 Path B), pass `--objects`:
 
 ```bash
 supaflow pipelines create \
@@ -249,7 +303,9 @@ print(f\"Objects selected: {d.get('objects_selected', '?')}\")
 "
 ```
 
-If no `--objects` file was created (user wants all objects), omit `--objects`:
+### Path A: Create with all objects
+
+If the user chose all objects (Step 9 Path A), omit `--objects`:
 
 ```bash
 supaflow pipelines create \
@@ -299,4 +355,6 @@ if excluded:
 
 **Field name contract:** `pipelines schema list` uses `object` for the object name. NOT `fully_qualified_name`. NOT `name`. Use `o['object']` only.
 
-Report the final list to the user and confirm the pipeline is ready.
+Report the final list to the user.
+
+Pipeline is ready. To sync now, use `/sync-pipeline`. To set up recurring syncs, use `/create-schedule`.

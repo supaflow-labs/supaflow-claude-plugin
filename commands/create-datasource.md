@@ -55,9 +55,45 @@ Review the output carefully:
 
 **GUARDRAIL: You MUST NOT ask for any connection credentials before completing this step.**
 
-## Step 3: Scaffold the Env File
+## Step 3: Read Connector Documentation and Validate Prerequisites
 
-Determine the connector type. If the user passed `[connector-type]` as an argument, use that. If not, ask.
+**MUST read the connector doc before asking for any datasource config.** Do not rely on memory -- the doc is the source of truth for prerequisites, required credentials, and connector-specific caveats.
+
+1. Resolve the connector type. If the user passed `[connector-type]` as an argument, use that. If not, ask. Map common names to doc topics: `sql_server` -> `sqlserver`, `s3` -> `s3` or `s3-data-lake`, `postgres` -> `postgres`, etc.
+
+2. Fetch and save the connector doc:
+```bash
+supaflow docs <connector-type> --output /tmp/<connector>-docs.txt
+```
+
+3. Read the full saved file to understand:
+   - **Prerequisites** (IAM roles, firewall rules, database users, permissions, network access)
+   - **Required credentials** (what the user needs to provide)
+   - **Connector-specific caveats** (query modes, auth methods, special setup)
+
+4. Present the prerequisites to the user as a checklist. For example:
+```
+Before creating this datasource, these prerequisites must be in place:
+
+- [ ] AWS IAM role with S3 read/write permissions (cross-account trust policy)
+- [ ] S3 bucket exists and is accessible
+- [ ] Glue Data Catalog permissions (if using catalog registration)
+
+Are these already done, or do you need help setting any of them up?
+```
+
+5. Wait for the user's response:
+   - **All done:** Proceed to Step 4.
+   - **Need help:** Walk the user through the prerequisite steps using the doc content. Show the exact commands or SQL from the docs (IAM policies, firewall rules, database user creation, etc.) but explain that this command is restricted to `Bash(supaflow *)` and cannot execute AWS CLI, SQL, or other non-Supaflow commands directly. The user must run those commands themselves.
+   - **Explicitly deferred:** The user says "skip prerequisites" or "I'll handle that later." Acknowledge the risk and proceed to Step 4.
+
+**GUARDRAIL: Do NOT proceed to datasource creation until prerequisites are confirmed complete or explicitly deferred by the user.**
+
+**GUARDRAIL: Save docs to a file and read locally. Do NOT dump full doc content into the conversation.**
+
+## Step 4: Scaffold the Env File
+
+Determine the connector type (already resolved in Step 3).
 
 Common connector types: `POSTGRES`, `SNOWFLAKE`, `S3`, `HUBSPOT`, `SALESFORCE`, `AIRTABLE`, `ORACLE_TM`, `SFMC`, `SQL_SERVER`, `GOOGLE_DRIVE`.
 
@@ -86,7 +122,7 @@ print(f\"Required fields: {d['required_properties']} | Optional fields: {d['opti
 
 Note the env file path from the output.
 
-## Step 4: Read the Env File and Identify Fields
+## Step 5: Read the Env File and Identify Fields
 
 Read the scaffolded env file to understand which fields are required, optional, and sensitive:
 
@@ -106,18 +142,18 @@ Categorize each field:
 - `(required, sensitive)` or just `(sensitive)` -- user must fill these directly in the file; NEVER ask in chat
 - `(optional)` -- use default if present, or skip
 
-## Step 5: Ask About Existing Credentials File
+## Step 6: Ask About Existing Credentials File
 
 Before asking for any values, ask the user:
 
 "Do you have connection credentials in an existing file (e.g., `.env`, `config.json`, `credentials.yaml`, or a cloud provider config)? If so, please share the path and I'll extract the values automatically."
 
 - If yes: Use the Read tool to read their file. Extract values matching the env file properties. Fill in non-sensitive values using the Edit tool.
-- If no: Ask only for the **non-sensitive required fields** in a single grouped question (e.g., "Please provide: host, port, database, username"). Fill them in using the Edit tool.
+- If no: Ask for non-sensitive required fields **one at a time**. This is an exception-free application of the one-question-at-a-time rule -- do not batch credential questions. Fill each value using the Edit tool as the user provides it.
 
 **GUARDRAIL: NEVER ask for passwords, secrets, API keys, tokens, private keys, or any field marked `(sensitive)` in chat.**
 
-## Step 6: Handle Sensitive Fields
+## Step 7: Handle Sensitive Fields
 
 After filling in non-sensitive values, identify which sensitive fields are still empty in the env file.
 
@@ -129,13 +165,29 @@ Tell the user exactly which fields they need to fill:
 
 Type `done` when you have saved the file."
 
-Wait for the user to confirm before proceeding. Do NOT move to Step 7 until they say done.
+Wait for the user to confirm before proceeding. Do NOT move to Step 8 until they say done.
 
 Optionally suggest: `open <filename>.env` (macOS) to open the file in their default editor.
 
-## Step 7: Create the Datasource
+## Step 8: Final Confirmation and Create
 
-Once the user confirms the env file is complete, create the datasource:
+Present a summary of what will be created and wait for explicit approval:
+
+```
+Ready to create datasource:
+
+Name:           <DISPLAY_NAME>
+Connector:      <CONNECTOR_TYPE>
+Key settings:   host=<value>, port=<value>, database=<value>, ...
+Sensitive:      <N> fields filled by user in env file
+Env file:       <filename>.env
+
+Proceed with creation?
+```
+
+**Do NOT run `datasources create` until the user explicitly confirms.** This is a hard gate matching the plugin's "do not create before explicit confirmation" rule.
+
+Once confirmed:
 
 ```bash
 supaflow datasources create --from <ENV_FILE> --json | python3 -c "
@@ -150,7 +202,7 @@ The create command auto-encrypts any plaintext sensitive values in the env file 
 
 If creation fails with an auth or workspace error, stop and recheck Step 1.
 
-## Step 8: Test the Connection
+## Step 9: Test the Connection
 
 After creation, trigger a connection test and poll for the result:
 
@@ -168,13 +220,13 @@ Poll the job status using only the 4 fields returned by `jobs status` (`id`, `jo
 supaflow jobs status <JOB_ID> --json | python3 -c "
 import sys,json; d=json.load(sys.stdin)
 if 'error' in d: print(d['error']['message']); sys.exit(1)
-status = d['job_status']
+job_st = d['job_status']
 msg = d.get('status_message') or ''
 resp = d.get('job_response')
 if resp:
-    print(f\"Status: {status} | {resp}\")
+    print(f\"Status: {job_st} | {resp}\")
 else:
-    print(f\"Status: {status} | {msg}\")
+    print(f\"Status: {job_st} | {msg}\")
 "
 ```
 
@@ -184,9 +236,9 @@ Do NOT invent fields -- `jobs status` returns ONLY `id`, `job_status`, `status_m
 
 **On success:** Inform the user the datasource is ready. Mention the api_name for use in pipeline creation.
 
-**On failure:** Proceed to Step 9.
+**On failure:** Proceed to Step 10.
 
-## Step 9: Diagnose Failures
+## Step 10: Diagnose Failures
 
 If the test job fails, get the full job details for diagnosis:
 

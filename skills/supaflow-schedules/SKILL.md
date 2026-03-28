@@ -9,9 +9,9 @@ description: Use when you need reference information about Supaflow schedule lif
 
 Schedules trigger pipelines, tasks, or orchestrations on a cron-based recurring schedule. Each schedule targets exactly one resource and uses a standard 5-field cron expression executed in UTC.
 
-All commands require prior authentication and workspace selection .
+All CLI commands require authentication and an active workspace.
 
-## Creating a Schedule
+## Schedule Configuration Reference
 
 ```bash
 supaflow schedules create \
@@ -149,7 +149,7 @@ supaflow schedules edit 18f28fc7-11d2-44d6-... --cron "0 */2 * * *" --json
 
 This differs from datasources and pipelines, which resolve by api_name or UUID.
 
-## Common Agent Patterns
+## Common Operations
 
 ### Create a schedule for an existing pipeline
 

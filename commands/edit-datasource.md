@@ -93,7 +93,17 @@ supaflow datasources get <NAME_OR_API_NAME> --output current_<api_name>.env
 
 Read the exported env file with the Read tool. Use the Edit tool to update only the fields that need to change. Do NOT modify encrypted `enc:` prefixed values unless replacing them.
 
-Then submit:
+Before submitting, show the user what changed and ask for explicit confirmation:
+
+```
+Changes to apply:
+  host: old-host.example.com -> new-host.example.com
+  port: 5432 -> 5433
+
+All other settings remain unchanged. Proceed?
+```
+
+**Do NOT run `datasources edit` until the user explicitly confirms.** Then submit:
 
 ```bash
 supaflow datasources edit <NAME_OR_API_NAME> --from current_<api_name>.env --json | python3 -c "
@@ -127,7 +137,11 @@ Tell the user which sensitive fields to update:
 
 Type `done` when you have saved the file."
 
-Wait for confirmation, then submit:
+Wait for the user to confirm the file is saved. Then show a confirmation summary:
+
+"Sensitive field(s) updated in the env file. Ready to apply changes to the datasource. Proceed?"
+
+**Do NOT run `datasources edit` until the user explicitly confirms.** Then submit:
 
 ```bash
 supaflow datasources edit <NAME_OR_API_NAME> --from current_<api_name>.env --json | python3 -c "

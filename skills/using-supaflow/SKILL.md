@@ -45,8 +45,9 @@ These rules are non-negotiable. Violating any of them is a bug.
 6. **Do not ask for passwords or secrets in chat.** Tell the user to edit the env file directly.
 7. **Stop on errors.** If a create/edit command fails, show the error verbatim and ask the user what to do. Never silently retry, rename, auto-increment, or "fix" the input without approval.
 8. **Always run `pipelines init` before `pipelines create`.** Present actual config values from the generated file and wait for explicit confirmation.
-9. **Parse JSON with `python3 -c`.** Never dump full JSON output into the conversation.
-10. **In shell loops, never use `status` as a variable name** (read-only in zsh). Use `job_status` or `poll_status`.
+9. **Object scope is a required decision.** Ask whether to sync all objects or a subset. Only omit `--objects` after the user explicitly says to sync all discovered objects.
+10. **Parse JSON with `python3 -c`.** Never dump full JSON output into the conversation.
+11. **In shell loops, never use `status` as a variable name** (read-only in zsh). Use `job_status` or `poll_status`.
 
 ## Red Flags
 
@@ -62,6 +63,8 @@ These thoughts mean STOP. You are rationalizing your way out of the command-firs
 | "I can retry with a different name/prefix" | Silent retries are a bug. Stop and ask. |
 | "I already know the job fields" | The CLI contract is the source of truth, not memory. |
 | "This doesn't need a command" | If a command exists, use it. |
+| "I'll just sync all objects by default" | Object scope is a required question. Ask first. |
+| "I can trigger the sync with a quick CLI call" | Use /sync-pipeline. It has the correct response parser and polling contract. |
 
 ## Conversation Discipline
 
@@ -87,13 +90,15 @@ Use these commands for the corresponding user intents. Commands have tool restri
 | Delete a pipeline | `/delete-pipeline` |
 | Check job status or latest sync | `/check-job` |
 | Diagnose a failed job | `/explain-job-failure` |
+| Sync a pipeline / run a sync | `/sync-pipeline` |
 | Schedule a pipeline | `/create-schedule` |
 
 If the user's request spans multiple commands (e.g., "set up a pipeline from scratch"), execute them in order:
 1. Check auth (every command does this automatically)
 2. `/create-datasource` for any missing datasources
 3. `/create-pipeline` (includes project resolution, object selection, config confirmation)
-4. `/create-schedule` if the user wants recurring syncs
+4. `/sync-pipeline` to trigger the first sync and verify data
+5. `/create-schedule` if the user wants recurring syncs
 
 Do NOT combine these into a single freeform workflow. Execute each command in sequence.
 
