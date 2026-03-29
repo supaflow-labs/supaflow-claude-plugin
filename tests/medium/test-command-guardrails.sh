@@ -40,6 +40,8 @@ assert_file_contains "$F" "NEVER ask for passwords" "create-datasource: contains
 assert_file_contains "$F" "supaflow docs" "create-datasource: fetches connector docs"
 assert_file_contains "$F" "prerequisites" "create-datasource: validates prerequisites"
 assert_file_contains "$F" "confirmed complete\|explicitly deferred" "create-datasource: gates on prerequisite confirmation"
+assert_file_contains "$F" "state is active\|state is \`active\`" "create-datasource: requires active state before pipeline readiness"
+assert_file_contains "$F" "datasources refresh" "create-datasource: teaches schema refresh before first pipeline creation"
 echo ""
 
 # --- check-job.md ---

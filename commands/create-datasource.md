@@ -209,7 +209,7 @@ The create command auto-encrypts any plaintext sensitive values in the env file 
 
 If creation fails with an auth or workspace error, stop and recheck Step 1.
 
-## Step 9: Test the Connection
+## Step 9: Test the Connection and Verify Readiness
 
 After creation, trigger a connection test and poll for the result:
 
@@ -241,7 +241,35 @@ Repeat polling until `job_status` is one of: `completed`, `completed_with_warnin
 
 Do NOT invent fields -- `jobs status` returns ONLY `id`, `job_status`, `status_message`, `job_response`.
 
-**On success:** Inform the user the datasource is ready. Mention the api_name for use in pipeline creation.
+If the connection test succeeds, check the datasource state before you say it is ready for pipeline creation:
+
+```bash
+supaflow datasources get <NAME_OR_API_NAME> --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+if 'error' in d: print(d['error']['message']); sys.exit(1)
+print(f\"Datasource: {d.get('name')} | API name: {d.get('api_name')} | State: {d.get('state')}\")
+"
+```
+
+**Hard gate for source datasources:**
+- Do NOT say a datasource is ready for pipeline creation until its state is `active`.
+- If the datasource will be used as a pipeline source, do NOT stop at connection test success. Source datasources also need a schema refresh before first pipeline creation so the object catalog is populated.
+
+Once the datasource is `active`, run schema refresh for source use:
+
+```bash
+supaflow datasources refresh <NAME_OR_API_NAME> --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+if 'error' in d: print(d['error']['message']); sys.exit(1)
+print(f\"Refresh status: {d.get('status')} | Message: {d.get('message','')}\")
+"
+```
+
+`datasources refresh` already waits for completion. If it fails because the datasource is not active yet, stop and tell the user to wait until the datasource reaches `active`, then rerun refresh.
+
+**On success:** Tell the user one of these, depending on the role of the datasource:
+- **Source datasource:** Connection test passed, datasource is `active`, and schema refresh completed. Mention the api_name and that it is ready for pipeline creation.
+- **Destination datasource:** Connection test passed and datasource is `active`. Mention the api_name and that it is ready to be used as a project destination.
 
 **On failure:** Proceed to Step 10.
 

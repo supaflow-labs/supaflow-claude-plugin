@@ -63,7 +63,7 @@ Domain skills are loaded automatically when a command needs them. They are not i
 On first session after install, the plugin verifies:
 
 - Node.js 18+ is installed
-- Supaflow CLI v0.1.10+ is installed (`npm install -g @getsupaflow/cli`)
+- Supaflow CLI v0.1.11+ is installed (`npm install -g @getsupaflow/cli`)
 - CLI is authenticated with a valid API key (`supaflow auth login`)
 - A workspace is selected (`supaflow workspaces select`)
 

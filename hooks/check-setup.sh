@@ -4,7 +4,7 @@ set -euo pipefail
 # SessionStart hook: inject using-supaflow skill content into Claude's
 # system context, plus setup warnings if CLI is not properly configured.
 
-MIN_CLI_VERSION="0.1.10"
+MIN_CLI_VERSION="0.1.11"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
