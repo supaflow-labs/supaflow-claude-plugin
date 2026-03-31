@@ -17,7 +17,7 @@ assert_file_contains "$F" "pipelines list" "create-pipeline: contains 'pipelines
 assert_file_contains "$F" "warehouse_datasource_id" "create-pipeline: contains 'warehouse_datasource_id'"
 assert_file_contains "$F" "NEVER silently rename" "create-pipeline: contains 'NEVER silently rename'"
 assert_file_contains "$F" "explicit confirmation" "create-pipeline: contains explicit confirmation language"
-assert_file_contains "$F" "o\['object'\]" "create-pipeline: uses o['object'] for schema list field"
+assert_file_contains "$F" "o\['fully_qualified_name'\]" "create-pipeline: uses o['fully_qualified_name'] for schema list field"
 assert_file_contains "$F" "\-\-name" "create-pipeline: create uses --name flag"
 assert_file_contains "$F" "\-\-source" "create-pipeline: create uses --source flag"
 assert_file_contains "$F" "\-\-project" "create-pipeline: create uses --project flag"
@@ -65,7 +65,7 @@ echo ""
 # --- edit-pipeline.md ---
 echo "-- edit-pipeline.md --"
 F="$COMMANDS/edit-pipeline.md"
-assert_file_contains "$F" "o\['object'\]" "edit-pipeline: uses o['object'] for schema list field"
+assert_file_contains "$F" "o\['fully_qualified_name'\]" "edit-pipeline: uses o['fully_qualified_name'] for schema list field"
 echo ""
 
 # --- delete-pipeline.md ---

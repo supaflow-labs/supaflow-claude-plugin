@@ -139,19 +139,19 @@ supaflow pipelines edit <pipeline-api-name> --name "New Name" --description "New
 
 ## Step 5b: Edit Object Selection
 
-First, list the current selected objects. Use `object` field ONLY -- NOT `fully_qualified_name` or `name`.
+First, list the current selected objects.
 
 ```bash
 supaflow pipelines schema list <pipeline-api-name> --all --json | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print(d['error']['message']); sys.exit(1)
-for o in d['data']:
+import sys,json; objs=json.load(sys.stdin)
+if isinstance(objs, dict) and 'error' in objs: print(objs['error']['message']); sys.exit(1)
+for o in objs:
     sel = 'SELECTED' if o['selected'] else 'excluded'
-    print(f\"  {o['object']} | {sel} | {o['total_fields']} fields | origin={o.get('origin','?')}\")
+    print(f\"  {o['fully_qualified_name']} | {sel}\")
 "
 ```
 
-**Field name contract:** The field for object name is `object`. Using `o['fully_qualified_name']` or `o['name']` will fail.
+**Field name contract:** `schema list --json` returns a raw array. Each item uses `fully_qualified_name`.
 
 ### Adding a Single Object
 
@@ -167,11 +167,11 @@ print('Object added successfully')
 
 ### Bulk Object Selection
 
-For multiple changes, export, edit, then reimport:
+For multiple changes, export current selections, edit, then reimport:
 
 ```bash
-# Export current selections to a file
-supaflow datasources catalog <source-api-name> --output /tmp/objects.json --json
+# Export current selections to a file (raw array with fully_qualified_name)
+supaflow pipelines schema list <pipeline-api-name> --all --json > /tmp/objects.json
 
 # Read and show current state
 python3 -c "
@@ -184,7 +184,7 @@ for o in objs:
 "
 ```
 
-Edit selections (use `fully_qualified_name` for catalog file -- this is DIFFERENT from schema list's `object` field):
+Edit selections:
 
 ```bash
 python3 -c "
@@ -208,8 +208,14 @@ Apply the new selection:
 ```bash
 supaflow pipelines schema select <pipeline-api-name> --from /tmp/objects.json --json | python3 -c "
 import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
-print('Object selection updated')
+if isinstance(d, dict) and 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
+if isinstance(d, list): d = d[0]
+if d.get('error_count', 0) > 0:
+    print(f\"PARTIAL FAILURE: {d['error_count']} of {d['processed_count']} objects failed\")
+    for e in (d.get('error_messages') or []):
+        print(f\"  {e['fully_qualified_name']}: {e['message']}\")
+    sys.exit(1)
+print(f\"Updated: {d['processed_count']} objects processed, {d.get('updated_count',0)} updated\")
 "
 ```
 
@@ -230,11 +236,11 @@ print(f\"Schema evolution: {c.get('schema_evolution_mode','?')}\")
 "
 
 supaflow pipelines schema list <pipeline-api-name> --json | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print(d['error']['message']); sys.exit(1)
-selected = [o for o in d['data'] if o['selected']]
-print(f\"Selected objects: {len(selected)}\")
+import sys,json; objs=json.load(sys.stdin)
+if isinstance(objs, dict) and 'error' in objs: print(objs['error']['message']); sys.exit(1)
+selected = [o for o in objs if o['selected']]
+print(f'Selected objects: {len(selected)}')
 for o in selected:
-    print(f\"  {o['object']} | {o['total_fields']} fields\")
+    print(f\"  {o['fully_qualified_name']}\")
 "
 ```

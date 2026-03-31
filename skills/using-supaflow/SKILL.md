@@ -124,8 +124,9 @@ These are the correct JSON field names for each CLI output. Never invent alterna
 **`pipelines list --json`:** nested `source.name`, `source.datasource_id`, `destination.name`, `destination.datasource_id`, `project.id`, `project.name`
 - NEVER use flat fields like `source_name` or `project_api_name`
 
-**`pipelines schema list --json`:** use `object` field
-- NEVER use `fully_qualified_name` or `name`
+**`pipelines schema list --json`:** returns a raw JSON array (NOT wrapped in `{ data: [...] }`). Each item uses `fully_qualified_name`, `selected`, `fields`
+- This is the same shape consumed by `pipelines schema select --from`
+- NEVER use `object` or `name` (old contract, removed)
 
 **`projects list --json`:** match destination by `warehouse_datasource_id`, not `warehouse_name`
 

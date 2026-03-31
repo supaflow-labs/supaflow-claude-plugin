@@ -93,12 +93,16 @@ Tell the user:
 - Show its currently selected objects:
 
 ```bash
-supaflow pipelines schema list <existing-pipeline-api-name> --json | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print(d['error']['message']); sys.exit(1)
-for o in d['data']:
-    sel = 'SELECTED' if o['selected'] else 'excluded'
-    print(f\"  {o['object']} | {sel} | {o['total_fields']} fields\")
+supaflow pipelines schema list <existing-pipeline-api-name> --all --json | python3 -c "
+import sys,json; objs=json.load(sys.stdin)
+if isinstance(objs, dict) and 'error' in objs: print(objs['error']['message']); sys.exit(1)
+selected = [o for o in objs if o['selected']]
+excluded = [o for o in objs if not o['selected']]
+print(f'Selected: {len(selected)} objects')
+for o in selected:
+    print(f\"  {o['fully_qualified_name']}\")
+if excluded:
+    print(f'Excluded: {len(excluded)} objects')
 "
 ```
 
@@ -343,20 +347,20 @@ If `pipelines create` fails with a duplicate or unique constraint error:
 After creation, verify the actual selected objects. Do NOT trust the create response summary alone.
 
 ```bash
-supaflow pipelines schema list <pipeline-api-name> --json | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print(d['error']['message']); sys.exit(1)
-selected = [o for o in d['data'] if o['selected']]
-excluded = [o for o in d['data'] if not o['selected']]
-print(f\"Selected: {len(selected)} objects\")
+supaflow pipelines schema list <pipeline-api-name> --all --json | python3 -c "
+import sys,json; objs=json.load(sys.stdin)
+if isinstance(objs, dict) and 'error' in objs: print(objs['error']['message']); sys.exit(1)
+selected = [o for o in objs if o['selected']]
+excluded = [o for o in objs if not o['selected']]
+print(f'Selected: {len(selected)} objects')
 for o in selected:
-    print(f\"  {o['object']} | {o['total_fields']} fields\")
+    print(f\"  {o['fully_qualified_name']}\")
 if excluded:
-    print(f\"Excluded: {len(excluded)} objects\")
+    print(f'Excluded: {len(excluded)} objects')
 "
 ```
 
-**Field name contract:** `pipelines schema list` uses `object` for the object name. NOT `fully_qualified_name`. NOT `name`. Use `o['object']` only.
+**Field name contract:** `pipelines schema list --json` returns a raw array. Each item uses `fully_qualified_name` (same field name as `datasources catalog --output` and `schema select --from`).
 
 Report the final list to the user.
 

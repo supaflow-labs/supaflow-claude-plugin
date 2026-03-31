@@ -310,7 +310,7 @@ supaflow jobs get <job-id> --json
 View and update which objects a pipeline syncs:
 
 ```bash
-# List selected objects (compact: object name, field counts, origin)
+# List selected objects (import-ready format)
 supaflow pipelines schema list <identifier> --json
 
 # List all objects (including deselected)
@@ -319,32 +319,32 @@ supaflow pipelines schema list <identifier> --all --json
 # Add a single object by name (no file needed)
 supaflow pipelines schema add <identifier> Opportunity --json
 
-# Update selections from a JSON file (for bulk changes)
+# Roundtrip: export, edit, reimport
+supaflow pipelines schema list <identifier> --all --json > objects.json
+# Edit objects.json (toggle selected: true/false)
 supaflow pipelines schema select <identifier> --from objects.json --json
 ```
 
-**Schema list JSON shape** -- the field is `object`, NOT `fully_qualified_name` or `name`:
+**Schema list JSON shape** -- returns a raw array (NOT wrapped in `{ data: [...] }`). Uses `fully_qualified_name`:
 ```json
-{
-  "data": [
-    { "object": "Account", "selected": true, "total_fields": 72, "selected_fields": 72, "origin": "explicit" },
-    { "object": "Lead", "selected": true, "total_fields": 45, "selected_fields": 45, "origin": "explicit" }
-  ]
-}
+[
+  { "fully_qualified_name": "Account", "selected": true, "fields": null },
+  { "fully_qualified_name": "Lead", "selected": true, "fields": null }
+]
 ```
+
+This is the same shape consumed by `schema select --from` and `pipelines create --objects`.
 
 **Parsing example:**
 ```bash
-supaflow pipelines schema list <identifier> --json | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print(d['error']['message']); sys.exit(1)
-for o in d['data']:
+supaflow pipelines schema list <identifier> --all --json | python3 -c "
+import sys,json; objs=json.load(sys.stdin)
+if isinstance(objs, dict) and 'error' in objs: print(objs['error']['message']); sys.exit(1)
+for o in objs:
     sel = 'SELECTED' if o['selected'] else 'excluded'
-    print(f\"  {o['object']} | {sel} | {o['total_fields']} fields\")
+    print(f\"  {o['fully_qualified_name']} | {sel}\")
 "
 ```
-
-**Field name warning:** `pipelines schema list` uses `object` for the name. `datasources catalog --output` uses `fully_qualified_name`. These are DIFFERENT commands with DIFFERENT field names.
 
 **To add a single object to a pipeline**, use `schema add` -- no need to export/edit/reimport a file:
 ```bash
