@@ -29,14 +29,17 @@ If authentication or workspace check fails: STOP. Tell the user to run `supaflow
 If the user passed `[datasource-name]` as an argument, use that identifier. If no name was provided, list all datasources and ask the user which to edit.
 
 ```bash
-supaflow datasources list --json | python3 -c "
+supaflow datasources list --limit 200 --json | python3 -c "
 import sys,json; d=json.load(sys.stdin)
 if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
 items = d.get('data', [])
 if not items: print('No datasources found in this workspace.'); sys.exit(0)
-print(f'Found {len(items)} datasource(s):')
+total = d.get('total', len(items))
+print(f'Found {total} datasource(s):')
 for i, ds in enumerate(items, 1):
     print(f\"  {i}. {ds['name']} | connector={ds.get('connector_type','?')} | api_name={ds.get('api_name','?')} | state={ds.get('state','?')}\")
+if total > len(items):
+    print(f'WARNING: showing {len(items)} of {total} datasources. Use --offset to page.')
 "
 ```
 

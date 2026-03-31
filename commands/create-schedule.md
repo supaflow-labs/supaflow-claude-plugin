@@ -24,30 +24,55 @@ If exit code is non-zero: STOP. Tell the user exactly what failed. Do NOT procee
 
 ## Step 1: Identify Pipeline
 
-If a pipeline name was provided as an argument, use it. If not, list available pipelines and ask the user which one to schedule.
+If the user provides an `api_name` or UUID, resolve it directly with `pipelines get`. If they provide a display name or no argument, list pipelines to find the match. `pipelines get` only resolves `api_name` or UUID -- display names must be mapped from the list first.
 
+**If api_name or UUID is known:**
 ```bash
-supaflow pipelines list --json | python3 -c "
+supaflow pipelines get <PIPELINE_API_NAME> --json | python3 -c "
 import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print(d['error']['message']); sys.exit(1)
-for p in d['data']:
-    src = p['source']
-    dst = p['destination']
-    print(f\"{p['name']} | {src['name']} ({src['connector_name']}) -> {dst['name']} ({dst['connector_name']}) | api_name={p['api_name']} | state={p['state']}\")
+if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
+print(f\"id={d['id']} api_name={d['api_name']} name={d['name']}\")
 "
 ```
 
-Match the user's argument against `name` or `api_name` from the list. Capture BOTH the pipeline's `api_name` (for `--pipeline` flag) and `id` (UUID, for matching against `target_id` in schedules). If no argument was given, present the list and ask which pipeline to schedule.
-
-To get the pipeline UUID:
+**If only a display name is known, or no argument given -- list and match:**
 ```bash
-supaflow pipelines list --json | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-for p in d['data']:
-    if p['api_name'] == '<PIPELINE_API_NAME>' or p['name'] == '<PIPELINE_NAME>':
-        print(f\"id={p['id']} api_name={p['api_name']}\")
+python3 -c "
+import subprocess, json, sys
+target = '<USER_INPUT>'  # may be name, api_name, or empty
+all_pipelines = []
+offset = 0
+limit = 200
+while True:
+    result = subprocess.run(
+        ['supaflow', 'pipelines', 'list', '--limit', str(limit), '--offset', str(offset), '--json'],
+        capture_output=True, text=True
+    )
+    d = json.loads(result.stdout)
+    if 'error' in d: print(d['error']['message']); sys.exit(1)
+    batch = d.get('data', [])
+    all_pipelines.extend(batch)
+    if len(batch) < limit: break
+    offset += limit
+if not target:
+    for p in all_pipelines:
+        src = p['source']; dst = p['destination']
+        print(f\"{p['name']} | {src['name']} ({src['connector_name']}) -> {dst['name']} ({dst['connector_name']}) | api_name={p['api_name']} | state={p['state']}\")
+    print(f'Total: {len(all_pipelines)} pipelines')
+else:
+    matches = [p for p in all_pipelines if p.get('name') == target or p.get('api_name') == target or p.get('id') == target]
+    if not matches: print(f'NOT FOUND: no pipeline matching {repr(target)}'); sys.exit(1)
+    if len(matches) > 1:
+        print(f'AMBIGUOUS: {len(matches)} pipelines match {repr(target)}. Please choose by api_name:')
+        for p in matches:
+            print(f\"  api_name={p['api_name']}  id={p['id']}  name={p['name']}\")
+        sys.exit(1)
+    m = matches[0]
+    print(f\"id={m['id']} api_name={m['api_name']} name={m['name']}\")
 "
 ```
+
+Capture BOTH the pipeline's `api_name` (for `--pipeline` flag) and `id` (UUID, for matching against `target_id` in schedules).
 
 ## Step 2: Check Existing Schedules
 

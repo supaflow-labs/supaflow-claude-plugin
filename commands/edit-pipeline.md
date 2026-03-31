@@ -25,13 +25,16 @@ If exit code is non-zero: STOP. Tell the user exactly what failed. Do NOT procee
 If a pipeline name was provided as an argument, use it directly. If not, list all pipelines and ask the user which to edit.
 
 ```bash
-supaflow pipelines list --json | python3 -c "
+supaflow pipelines list --limit 200 --json | python3 -c "
 import sys,json; d=json.load(sys.stdin)
 if 'error' in d: print(d['error']['message']); sys.exit(1)
 for p in d['data']:
     src = p['source']
     dst = p['destination']
     print(f\"{p['name']} | {src['name']} ({src['connector_name']}) -> {dst['name']} ({dst['connector_name']}) | api_name={p['api_name']} | state={p['state']}\")
+total = d.get('total', len(d['data']))
+if total > len(d['data']):
+    print(f'WARNING: showing {len(d[\"data\"])} of {total} pipelines. Use --offset to page.')
 "
 ```
 

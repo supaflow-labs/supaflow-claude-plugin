@@ -28,7 +28,7 @@ If the check fails, STOP. Tell the user exactly what to fix (authentication or w
 If a pipeline name was provided as an argument, find it in the list. If no argument was given, list all pipelines and ask the user which one to sync.
 
 ```bash
-supaflow pipelines list --json | python3 -c "
+supaflow pipelines list --limit 200 --json | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
@@ -36,6 +36,9 @@ for p in d.get('data', []):
     src = p['source']
     dst = p['destination']
     print(f\"{p['name']} | {src['name']} ({src['connector_name']}) -> {dst['name']} ({dst['connector_name']}) | api_name={p['api_name']} | state={p['state']}\")
+total = d.get('total', len(d.get('data', [])))
+if total > len(d.get('data', [])):
+    print(f'WARNING: showing {len(d[\"data\"])} of {total} pipelines. Use --offset to page.')
 "
 ```
 

@@ -35,13 +35,17 @@ The argument is either a job UUID or a pipeline name/api_name.
 
 Step 1 -- find the pipeline UUID by name:
 ```bash
-supaflow pipelines list --json | python3 -c "
+supaflow pipelines list --limit 200 --json | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
 name = '<PIPELINE_NAME>'
 matches = [p for p in d.get('data', []) if p.get('name') == name or p.get('api_name') == name or p.get('id') == name]
-if not matches: print('NOT FOUND: no pipeline named ' + repr(name)); sys.exit(1)
+if not matches:
+    total = d.get('total', len(d.get('data', [])))
+    shown = len(d.get('data', []))
+    hint = f' (only {shown} of {total} loaded)' if total > shown else ''
+    print('NOT FOUND: no pipeline named ' + repr(name) + hint); sys.exit(1)
 print(matches[0]['id'])
 "
 ```

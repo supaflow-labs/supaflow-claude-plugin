@@ -55,15 +55,18 @@ If the user hasn't set up the source/destination system yet, read the docs and h
 Run `datasources list` before asking the user for connection details. This surfaces existing datasources that may already cover the requested connection.
 
 ```bash
-supaflow datasources list --json | python3 -c "
+supaflow datasources list --limit 200 --json | python3 -c "
 import sys,json; d=json.load(sys.stdin)
 if 'error' in d: print(d['error']['message']); sys.exit(1)
 for ds in d['data']:
     print(f\"{ds['name']} | {ds['connector_type']} | api_name={ds['api_name']} | state={ds['state']}\")
+total = d.get('total', len(d['data']))
+if total > len(d['data']):
+    print(f'WARNING: showing {len(d[\"data\"])} of {total} datasources. Use --offset to page.')
 "
 ```
 
-**Important:** List commands return `{ "data": [...] }` -- always access `['data']` to get the array.
+**Important:** List commands return `{ "data": [...], "total": N, "limit": N, "offset": N }` -- always access `['data']` to get the array. The default limit is 25. Always use `--limit 200` to avoid silently missing datasources. Check `total > len(data)` and warn about truncation.
 
 Review the list and tell the user what already exists. For example:
 - "You already have a SQL Server source called 'SQL Server' (api_name: sql_server_qdvbd4). Want to use it or create a new one?"
@@ -199,7 +202,7 @@ supaflow pipelines schema add <pipeline> Opportunity --json
 
 ```bash
 # List all datasources (no configs -- lightweight)
-supaflow datasources list --json
+supaflow datasources list --limit 200 --json
 
 # View details by UUID or api_name (includes configs)
 supaflow datasources get <identifier> --json
@@ -335,7 +338,7 @@ supaflow datasources catalog my_postgres --output objects.json
 ### Check if a datasource exists before creating
 
 ```bash
-supaflow datasources list --json
+supaflow datasources list --limit 200 --json
 # Parse output to check for existing api_name
 ```
 

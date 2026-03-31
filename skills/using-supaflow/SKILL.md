@@ -121,7 +121,12 @@ These are the correct JSON field names for each CLI output. Never invent alterna
 **`jobs get --json`:** `execution_duration_ms`, `ended_at`, `job_response`, `object_details`
 - NEVER use: `duration`, `completed_at`, `objects`, `rows_read`
 
-**`pipelines list --json`:** nested `source.name`, `source.datasource_id`, `destination.name`, `destination.datasource_id`, `project.id`, `project.name`
+**`pipelines list --json` / `datasources list --json`:** wraps results in `{ "data": [...], "total": N, "limit": N, "offset": N }`
+- Default limit is 25. **Always use `--limit 200`** to avoid silently missing items. The CLI hard-caps at 200.
+- Always check `total > len(data)` and warn the user about truncation.
+- **For exhaustive scans** (duplicate checks, deletion verification): page with `--offset` until `len(batch) < limit`. A single page is NOT authoritative.
+- **For single-item lookups**: prefer `pipelines get <identifier>` or `datasources get <identifier>` which resolve directly without pagination.
+- Pipeline items use nested fields: `source.name`, `source.datasource_id`, `destination.name`, `destination.datasource_id`, `project.id`, `project.name`
 - NEVER use flat fields like `source_name` or `project_api_name`
 
 **`pipelines schema list --json`:** returns a raw JSON array (NOT wrapped in `{ data: [...] }`). Each item uses `fully_qualified_name`, `selected`, `fields`

@@ -77,15 +77,18 @@ Are these already done, or do you need help setting any of them up?
 **Run this AFTER reading docs so you know what to look for** (e.g., whether an existing datasource has the right query mode or auth method).
 
 ```bash
-supaflow datasources list --json | python3 -c "
+supaflow datasources list --limit 200 --json | python3 -c "
 import sys,json; d=json.load(sys.stdin)
 if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
 items = d.get('data', [])
 if not items: print('No existing datasources found.')
 else:
-    print(f'Found {len(items)} existing datasource(s):')
+    total = d.get('total', len(items))
+    print(f'Found {total} existing datasource(s):')
     for ds in items:
         print(f\"  {ds['name']} | connector={ds.get('connector_type','?')} | api_name={ds.get('api_name','?')} | state={ds.get('state','?')}\")
+    if total > len(items):
+        print(f'WARNING: showing {len(items)} of {total} datasources. Use --offset to page.')
 "
 ```
 

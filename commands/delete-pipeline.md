@@ -25,13 +25,16 @@ If exit code is non-zero: STOP. Tell the user exactly what failed. Do NOT procee
 If a pipeline name was provided as an argument, use it directly. If not, list all pipelines and ask the user which to delete.
 
 ```bash
-supaflow pipelines list --json | python3 -c "
+supaflow pipelines list --limit 200 --json | python3 -c "
 import sys,json; d=json.load(sys.stdin)
 if 'error' in d: print(d['error']['message']); sys.exit(1)
 for p in d['data']:
     src = p['source']
     dst = p['destination']
     print(f\"{p['name']} | {src['name']} ({src['connector_name']}) -> {dst['name']} ({dst['connector_name']}) | api_name={p['api_name']} | state={p['state']}\")
+total = d.get('total', len(d['data']))
+if total > len(d['data']):
+    print(f'WARNING: showing {len(d[\"data\"])} of {total} pipelines. Use --offset to page.')
 "
 ```
 
@@ -99,18 +102,19 @@ print('Pipeline deleted successfully.')
 
 ## Step 6: Verify Deletion
 
-Confirm the pipeline no longer appears in the list.
+Confirm the pipeline no longer exists by fetching it directly (no pagination needed):
 
 ```bash
-supaflow pipelines list --json | python3 -c "
+supaflow pipelines get <pipeline-api-name> --json | python3 -c "
 import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print(d['error']['message']); sys.exit(1)
-names = [p['api_name'] for p in d['data']]
-target = '<pipeline-api-name>'
-if target in names:
-    print(f'WARNING: Pipeline {target} still appears in list. Deletion may not have completed.')
+if 'error' in d:
+    code = d['error'].get('code', '')
+    if code == 'NOT_FOUND':
+        print('Confirmed: pipeline has been deleted.')
+    else:
+        print(f'ERROR: could not verify deletion ({code}): {d[\"error\"][\"message\"]}')
+        sys.exit(1)
 else:
-    print(f'Confirmed: pipeline {target} is no longer in the list.')
-print(f'Remaining pipelines: {len(d[\"data\"])}')
+    print(f'WARNING: Pipeline {d.get(\"api_name\",\"?\")} still exists (state={d.get(\"state\",\"?\")}).')
 "
 ```

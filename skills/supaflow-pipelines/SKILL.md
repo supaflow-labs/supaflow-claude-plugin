@@ -43,16 +43,32 @@ for p in d['data']:
 
 **Always check for existing pipelines between the same source and destination first.** Duplicate pipelines writing to the same destination schema cause merge conflicts and data corruption.
 
+The duplicate check MUST scan all pipelines. The CLI caps `--limit` at 200, so page until exhausted:
+
 ```bash
-supaflow pipelines list --json | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print(d['error']['message']); sys.exit(1)
-for p in d['data']:
+python3 -c "
+import subprocess, json, sys
+all_pipelines = []
+offset = 0
+limit = 200
+while True:
+    result = subprocess.run(
+        ['supaflow', 'pipelines', 'list', '--limit', str(limit), '--offset', str(offset), '--json'],
+        capture_output=True, text=True
+    )
+    d = json.loads(result.stdout)
+    if 'error' in d: print(d['error']['message']); sys.exit(1)
+    batch = d.get('data', [])
+    all_pipelines.extend(batch)
+    if len(batch) < limit: break
+    offset += limit
+for p in all_pipelines:
     print(f\"{p['name']} | {p['source']['connector_name']} -> {p['destination']['connector_name']} | api_name={p['api_name']} | state={p['state']}\")
+print(f'Total: {len(all_pipelines)} pipelines scanned')
 "
 ```
 
-**Important:** List commands return `{ "data": [...] }` -- always access `['data']` to get the array.
+**Important:** List commands return `{ "data": [...], "total": N, "limit": N, "offset": N }`. The default limit is 25 and the CLI caps at 200. For exhaustive scans (e.g., duplicate checks), page with `--offset` until `len(batch) < limit`. For single-item lookups, prefer `pipelines get <identifier>` which resolves directly without pagination.
 
 Review the results for pipelines with the same source and destination. If one exists, inform the user:
 - What pipeline already exists (name, source, destination)
@@ -378,12 +394,12 @@ Disabled pipelines cannot be synced until re-enabled.
 ## Listing and Viewing
 
 ```bash
-supaflow pipelines list --json
-supaflow pipelines list --state active --json
+supaflow pipelines list --limit 200 --json
+supaflow pipelines list --limit 200 --state active --json
 
 # Sorting and pagination
-supaflow pipelines list --sort last_sync_at --order desc --json
-supaflow pipelines list --limit 10 --offset 0 --json
+supaflow pipelines list --limit 200 --sort last_sync_at --order desc --json
+supaflow pipelines list --limit 10 --offset 0 --json   # explicit small page
 
 supaflow pipelines get <identifier> --json
 ```

@@ -25,11 +25,14 @@ If exit code is non-zero: STOP. Tell the user exactly what failed. Do NOT procee
 ## Step 2: Identify Source and Destination Datasources
 
 ```bash
-supaflow datasources list --json | python3 -c "
+supaflow datasources list --limit 200 --json | python3 -c "
 import sys,json; d=json.load(sys.stdin)
 if 'error' in d: print(d['error']['message']); sys.exit(1)
 for ds in d['data']:
     print(f\"{ds['name']} | {ds['connector_type']} | api_name={ds['api_name']} | id={ds['id']} | state={ds['state']}\")
+total = d.get('total', len(d['data']))
+if total > len(d['data']):
+    print(f'WARNING: showing {len(d[\"data\"])} of {total} datasources. Use --offset to page.')
 "
 ```
 
@@ -65,15 +68,31 @@ Parse the create response to get the new project's `api_name`.
 
 **MANDATORY before creating.** Duplicate pipelines writing to the same destination schema cause data corruption.
 
+This step MUST scan all pipelines, not just the first page. The CLI caps `--limit` at 200, so page until exhausted:
+
 ```bash
-supaflow pipelines list --json | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print(d['error']['message']); sys.exit(1)
-for p in d['data']:
+python3 -c "
+import subprocess, json, sys
+all_pipelines = []
+offset = 0
+limit = 200
+while True:
+    result = subprocess.run(
+        ['supaflow', 'pipelines', 'list', '--limit', str(limit), '--offset', str(offset), '--json'],
+        capture_output=True, text=True
+    )
+    d = json.loads(result.stdout)
+    if 'error' in d: print(d['error']['message']); sys.exit(1)
+    batch = d.get('data', [])
+    all_pipelines.extend(batch)
+    if len(batch) < limit: break
+    offset += limit
+for p in all_pipelines:
     src = p['source']
     dst = p['destination']
     proj = p.get('project', {})
     print(f\"{p['name']} | {src['name']} ({src['connector_name']}) -> {dst['name']} ({dst['connector_name']}) | api_name={p['api_name']} | state={p['state']} | src_id={src['datasource_id']} | dst_id={dst['datasource_id']} | project_id={proj.get('id','?')} | project_name={proj.get('name','?')}\")
+print(f'Total: {len(all_pipelines)} pipelines scanned')
 "
 ```
 
