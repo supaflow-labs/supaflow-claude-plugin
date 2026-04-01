@@ -1,5 +1,5 @@
 ---
-description: Create a new Supaflow datasource with guided credential setup
+description: Connect a new data source
 allowed-tools: Bash(supaflow *), Bash(snow *), Bash(aws *), Bash(gcloud *), Bash(az *), Bash(psql *), Bash(sqlcmd *), Bash(mysql *), Read, Edit, Write
 argument-hint: [connector-type]
 ---

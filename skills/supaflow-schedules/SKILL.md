@@ -1,11 +1,11 @@
 ---
 name: supaflow-schedules
-description: Use when you need reference information about Supaflow schedule lifecycle, cron syntax, timezone handling, or schedule management
+description: Cron schedules and timezone handling
 ---
 
 # Supaflow Schedule Management
 
-**This is a reference skill, not a workflow.** For schedule operations, use the `/create-schedule` command. This skill provides background knowledge about cron syntax, timezone handling, and schedule lifecycle.
+**This is a reference skill, not a workflow.** For schedule operations, use the `/create-schedule` command. This skill provides background knowledge about cron schedules and timezone handling.
 
 Schedules trigger pipelines, tasks, or orchestrations on a cron-based recurring schedule. Each schedule targets exactly one resource and uses a standard 5-field cron expression executed in UTC.
 

@@ -1,5 +1,5 @@
 ---
-description: Edit an existing Supaflow pipeline configuration or object selection
+description: Edit pipeline config or object selection
 allowed-tools: Bash(supaflow *), Read, Edit, Write
 argument-hint: [pipeline-name]
 ---

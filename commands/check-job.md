@@ -1,5 +1,5 @@
 ---
-description: Check the status of a Supaflow job or the latest job for a pipeline
+description: Check job status or latest sync result
 allowed-tools: Bash(supaflow *)
 argument-hint: [job-id or pipeline-name]
 ---

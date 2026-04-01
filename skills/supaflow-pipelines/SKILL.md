@@ -1,11 +1,11 @@
 ---
 name: supaflow-pipelines
-description: Use when you need reference information about Supaflow pipeline configuration, schema management, sync modes, object selection, or pipeline lifecycle
+description: Pipeline setup, schema, and sync modes
 ---
 
 # Supaflow Pipeline Management
 
-**This is a reference skill, not a workflow.** For pipeline operations, use `/create-pipeline`, `/edit-pipeline`, or `/delete-pipeline` commands. This skill provides background knowledge about pipeline config fields, schema management, and sync modes.
+**This is a reference skill, not a workflow.** For pipeline operations, use `/create-pipeline`, `/edit-pipeline`, or `/delete-pipeline` commands. This skill provides background knowledge about pipeline setup, schema management, and sync modes.
 
 Pipelines move data from a source datasource to a destination warehouse. Each pipeline belongs to a project (which defines the destination) and selects which objects to sync.
 

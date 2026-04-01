@@ -51,10 +51,10 @@ The plugin is organized in three layers:
 
 | Skill | Content |
 |---|---|
-| `supaflow-datasources` | Connector properties, env file format, credential catalog |
-| `supaflow-pipelines` | Pipeline config fields, schema management, sync modes |
-| `supaflow-jobs` | Job lifecycle, metrics schema, log analysis patterns |
-| `supaflow-schedules` | Cron syntax, timezone handling, schedule constraints |
+| `supaflow-datasources` | Connectors, credentials, and catalog |
+| `supaflow-pipelines` | Pipeline setup, schema, and sync modes |
+| `supaflow-jobs` | Look up job status, metrics, or logs |
+| `supaflow-schedules` | Cron schedules and timezone handling |
 
 Domain skills are loaded automatically when a command needs them. They are not invoked directly.
 

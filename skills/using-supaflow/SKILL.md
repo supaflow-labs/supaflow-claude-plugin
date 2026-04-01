@@ -1,6 +1,6 @@
 ---
 name: using-supaflow
-description: Use when the user mentions Supaflow, data pipelines, datasources, connectors, syncing, ETL, ELT, or any Supaflow CLI operation. Establishes command-first workflow discipline before ANY response, including clarifying questions.
+description: Supaflow CLI command-first workflow for pipelines, syncs, and jobs
 ---
 
 # Supaflow Plugin
@@ -148,7 +148,7 @@ For JSON output contracts, global flags, identifier resolution, auth environment
 
 These skills contain background knowledge. Use them when you need connector details, pipeline configuration context, or job metrics. They are reference material only. Do NOT use them to replace a command-backed workflow:
 
-- `supaflow-datasources` -- connector properties, env file format, catalog browsing
-- `supaflow-pipelines` -- pipeline config fields, schema management, sync modes
-- `supaflow-jobs` -- job lifecycle, per-object metrics, log analysis
-- `supaflow-schedules` -- cron syntax, schedule lifecycle, timezone handling
+- `supaflow-datasources` -- connectors, credentials, and catalog
+- `supaflow-pipelines` -- pipeline setup, schema, and sync modes
+- `supaflow-jobs` -- look up job status, metrics, or logs
+- `supaflow-schedules` -- cron schedules and timezone handling

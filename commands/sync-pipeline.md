@@ -1,5 +1,5 @@
 ---
-description: Trigger a pipeline sync and optionally poll for completion
+description: Trigger a sync and poll for completion
 allowed-tools: Bash(supaflow *)
 argument-hint: [pipeline-name]
 ---

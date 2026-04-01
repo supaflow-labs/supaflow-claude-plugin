@@ -1,11 +1,11 @@
 ---
 name: supaflow-datasources
-description: Use when you need reference information about Supaflow datasources, connector properties, env file format, catalog browsing, or connection testing
+description: Connectors, credentials, and catalog
 ---
 
 # Supaflow Datasource Management
 
-**This is a reference skill, not a workflow.** For datasource operations, use the `/create-datasource` or `/edit-datasource` commands. This skill provides background knowledge about connector properties, env file format, and catalog structure.
+**This is a reference skill, not a workflow.** For datasource operations, use the `/create-datasource` or `/edit-datasource` commands. This skill provides background knowledge about connectors, credentials, and catalog structure.
 
 **Env file annotation format:**
 ```env

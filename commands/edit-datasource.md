@@ -1,5 +1,5 @@
 ---
-description: Edit an existing Supaflow datasource configuration
+description: Edit datasource config or credentials
 allowed-tools: Bash(supaflow *), Bash(snow *), Bash(aws *), Bash(gcloud *), Bash(az *), Bash(psql *), Bash(sqlcmd *), Bash(mysql *), Read, Edit
 argument-hint: [datasource-name]
 ---

@@ -1,5 +1,5 @@
 ---
-description: Diagnose why a Supaflow job failed using job details and logs
+description: Diagnose a failed job
 allowed-tools: Bash(supaflow *)
 argument-hint: [job-id]
 ---

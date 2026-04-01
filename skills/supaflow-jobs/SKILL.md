@@ -1,11 +1,11 @@
 ---
 name: supaflow-jobs
-description: Use when you need reference information about Supaflow job lifecycle, per-object metrics, log analysis, job statuses, or execution details
+description: Look up job status, metrics, or logs
 ---
 
 # Supaflow Job Monitoring
 
-**This is a reference skill, not a workflow.** For job inspection, use `/check-job` or `/explain-job-failure` commands. This skill provides background knowledge about job lifecycle, per-object metrics, and log analysis.
+**This is a reference skill, not a workflow.** For job inspection, use `/check-job` or `/explain-job-failure` commands. This skill provides background knowledge about job status, per-object metrics, and log analysis.
 
 Jobs are async execution records created by pipeline syncs, datasource tests, and schema refreshes. Every `pipelines sync`, `datasources create`, `datasources test`, and `datasources refresh` command creates a job.
 

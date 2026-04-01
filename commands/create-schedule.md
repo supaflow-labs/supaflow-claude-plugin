@@ -1,5 +1,5 @@
 ---
-description: Create a recurring schedule for a Supaflow pipeline
+description: Schedule a pipeline on a cron
 allowed-tools: Bash(supaflow *)
 argument-hint: [pipeline-name]
 ---

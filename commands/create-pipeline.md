@@ -1,5 +1,5 @@
 ---
-description: Create a new Supaflow pipeline from source to destination datasource
+description: Create a new sync pipeline
 allowed-tools: Bash(supaflow *), Read, Edit, Write
 argument-hint: [source-datasource] [destination-datasource]
 ---

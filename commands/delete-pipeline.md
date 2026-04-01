@@ -1,5 +1,5 @@
 ---
-description: Delete a Supaflow pipeline permanently
+description: Delete a pipeline
 allowed-tools: Bash(supaflow *)
 argument-hint: [pipeline-name]
 ---
