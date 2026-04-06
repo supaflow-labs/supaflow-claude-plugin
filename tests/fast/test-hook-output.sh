@@ -17,8 +17,11 @@ run_hook_with_mocks() {
     # Also need printf, sed, sort, head, grep, bash from system
     ORIGINAL_PATH="$PATH"
     export PATH="$mock_dir:/usr/bin:/bin"
+    # Skip Homebrew PATH injection so removing a mock truly simulates missing command
+    export _SUPAFLOW_HOOK_TEST=1
     local output
     output=$(bash "$PLUGIN_ROOT/hooks/check-setup.sh" 2>/dev/null || true)
+    unset _SUPAFLOW_HOOK_TEST
     export PATH="$ORIGINAL_PATH"
     rm -rf "$mock_dir"
     echo "$output"

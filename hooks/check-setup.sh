@@ -4,6 +4,16 @@ set -euo pipefail
 # SessionStart hook: inject using-supaflow skill content into Claude's
 # system context, plus setup warnings if CLI is not properly configured.
 
+# Ensure Homebrew is on PATH for this script's own checks.
+# Claude Code Desktop runs hooks with a minimal PATH (/usr/bin:/bin:/usr/sbin:/sbin).
+if [ -z "${_SUPAFLOW_HOOK_TEST:-}" ]; then
+  if [ -d /opt/homebrew/bin ]; then
+    export PATH="/opt/homebrew/bin:$PATH"
+  elif [ -d /usr/local/bin ]; then
+    export PATH="/usr/local/bin:$PATH"
+  fi
+fi
+
 MIN_CLI_VERSION="0.1.12"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
