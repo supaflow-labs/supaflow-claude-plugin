@@ -129,6 +129,26 @@ python3 supaflow-platform/scripts/smoke/sync_smoke_pipelines.py postgresql --ful
 
 Check and update this map before a smoke run if any source is known-broken.
 
+### Running a subset of source pipelines for one destination
+
+`sync_smoke_pipelines.py` filters by **destination** only -- no `--sources` flag. When the release scope calls for "just the dlt sources (Jira + Stripe) against PG and S3 Data Lake" (e.g., re-running after a fix that only affects those), do not try to shoehorn this into the batch script. Invoke `supaflow pipelines sync` one pipeline at a time:
+
+```bash
+export SUPAFLOW_APP_URL=http://localhost:3000
+
+# Postgres -- no --reset-target (destination merge handles existing tables)
+supaflow pipelines sync jira_to_postgresql_smoke_test   --full-resync --json
+supaflow pipelines sync stripe_to_postgresql_smoke_test --full-resync --json
+
+# S3 Data Lake -- --reset-target drops stale Iceberg tables before writing
+supaflow pipelines sync jira_to_s3_data_lake_smoke_test   --full-resync --reset-target --json
+supaflow pipelines sync stripe_to_s3_data_lake_smoke_test --full-resync --reset-target --json
+```
+
+**Don't** wrap these in a shell `for` loop with `$flags` containing multiple space-separated args -- zsh/bash will word-split the variable inside the sync command unreliably and the CLI may receive the wrong flags, producing non-JSON output that breaks downstream parsing. Single invocations with the flags written literally on the command line are the safe form.
+
+Capture the printed `job_id` from each response and feed them into `verify_smoke_jobs.py` + the appropriate `validate_*.py` + `validate_supa_passthrough.py` as in sections 4-6.
+
 ---
 
 ## 4. Verify jobs (log analysis)
@@ -177,18 +197,22 @@ These are filtered out by the script's `KNOWN_WARNINGS` list. If you see them in
 
 For each destination, run the corresponding validator for the jobs that passed verification. These compare actual destination data against the source staging CSVs using DuckDB aggregates.
 
+All validators expect to be run **from `supaflow-platform/`** (their relative paths like `scripts/smoke/` and `data/tenants/` resolve from there).
+
 ```bash
+cd supaflow-platform
+
 # Snowflake (no env needed beyond snow CLI config)
 python3 scripts/smoke/validate_snowflake.py --job-id <job-id>
 python3 scripts/smoke/validate_snowflake.py --job-id <job-id> --objects Customer Event  # subset
 
 # Glue Iceberg (needs AWS creds)
-source supaflow-platform/export.env
-PYTHONPATH=supaflow-platform/python python3 scripts/smoke/validate_glue_iceberg.py --job-id <job-id>
+source export.env
+PYTHONPATH=python python3 scripts/smoke/validate_glue_iceberg.py --job-id <job-id>
 
 # Glue Parquet (needs AWS creds)
-source supaflow-platform/export.env
-PYTHONPATH=supaflow-platform/python python3 scripts/smoke/validate_glue_parquet.py --job-id <job-id>
+source export.env
+PYTHONPATH=python python3 scripts/smoke/validate_glue_parquet.py --job-id <job-id>
 ```
 
 Output:
@@ -208,18 +232,46 @@ Output:
 For dlt-based sources (Jira, Stripe as of 2026-04), the Python SDK emits source-owned `_supa_id` and `_supa_index` values. These MUST be preserved byte-for-byte through staging CSV -> destination table. Run:
 
 ```bash
-# Snowflake
+cd supaflow-platform
+
+# Snowflake -- no env needed beyond snow CLI config
 python3 scripts/smoke/validate_supa_passthrough.py --destination snowflake --job-id <id>
 
-# Glue Iceberg (needs AWS creds + S3 prefix)
-source supaflow-platform/export.env
+# Glue Iceberg -- needs AWS creds from export.env + S3 prefix
+source export.env
 python3 scripts/smoke/validate_supa_passthrough.py --destination glue-iceberg \
     --job-id <id> --s3-prefix-path "${AWS_S3_PREFIX_PATH:-supa-prefix}"
 
-# PostgreSQL (needs DEV_SUPABASE_DB_* env vars from schema-deploy/.env)
-source supaflow-platform/supaflow-sql-scripts/src/tools/schema-deploy/.env
+# PostgreSQL destination -- requires a remap step, see below
+```
+
+**Postgres credential remap (GOTCHA):** the validator reads `DEV_SUPABASE_DB_{HOST,PORT,USER,PASSWORD,NAME}`, which by name looks like it should come from `supaflow-sql-scripts/.../schema-deploy/.env`. It does NOT -- those vars point at the **control-plane** Supabase (platform metadata), not the actual Postgres **destination** warehouse. The destination credentials live in `supaflow-platform/export.env` under `POSTGRES_*`. You have to remap before running the validator:
+
+```bash
+cd supaflow-platform
+source export.env
+export DEV_SUPABASE_DB_HOST="$POSTGRES_HOST"
+export DEV_SUPABASE_DB_PORT="$POSTGRES_PORT"
+export DEV_SUPABASE_DB_USER="$POSTGRES_USER"
+export DEV_SUPABASE_DB_PASSWORD="$POSTGRES_PASSWORD"
+export DEV_SUPABASE_DB_NAME="$POSTGRES_DATABASE"
 python3 scripts/smoke/validate_supa_passthrough.py --destination postgres --job-id <id>
 ```
+
+If the destination read fails with `relation "<pipeline_prefix>.<table>" does not exist`, you are almost certainly pointed at the control-plane Supabase instead of the PG destination -- re-export from `POSTGRES_*` and retry. The `validate_supa_passthrough.py` envvar naming is a latent bug; when fixed the remap step goes away.
+
+**`.env` files without `export` prefixes:** `schema-deploy/.env` sets vars as plain `KEY=VALUE` lines, so `source .env` puts them in the shell but does NOT export them to child processes. Python subprocesses see nothing. Use one of:
+
+```bash
+# Option A: auto-export around the source
+set -a && source supaflow-sql-scripts/src/tools/schema-deploy/.env && set +a
+
+# Option B: explicit export of the specific vars needed
+source supaflow-sql-scripts/src/tools/schema-deploy/.env
+export DEV_SUPABASE_DB_HOST DEV_SUPABASE_DB_PORT DEV_SUPABASE_DB_USER DEV_SUPABASE_DB_PASSWORD DEV_SUPABASE_DB_NAME
+```
+
+`export.env` already uses `export KEY=VALUE` and works directly with `source`.
 
 Per object, the validator asserts:
 
