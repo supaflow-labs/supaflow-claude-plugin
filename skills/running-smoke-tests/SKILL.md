@@ -129,6 +129,17 @@ python3 supaflow-platform/scripts/smoke/sync_smoke_pipelines.py postgresql --ful
 
 Check and update this map before a smoke run if any source is known-broken.
 
+### Docker release-regression one-shot
+
+For the standard release-smoke matrix (dlt sources x all 3 destinations, Docker agent), there is a pre-baked helper:
+
+```bash
+cd supaflow-platform
+./scripts/smoke/docker_regression_run.sh
+```
+
+It kicks off Jira + Stripe against Snowflake, Postgres, and S3 Data Lake with the right flag combination (`--full-resync` on SF/PG, `--full-resync --reset-target` on S3 Data Lake) and writes the 6 job IDs to `.docker_regression_jobs.txt` (gitignored). Use this as the default for release smoke; fall back to the one-pipeline-at-a-time recipe below only when running a narrower subset.
+
 ### Running a subset of source pipelines for one destination
 
 `sync_smoke_pipelines.py` filters by **destination** only -- no `--sources` flag. When the release scope calls for "just the dlt sources (Jira + Stripe) against PG and S3 Data Lake" (e.g., re-running after a fix that only affects those), do not try to shoehorn this into the batch script. Invoke `supaflow pipelines sync` one pipeline at a time:
