@@ -60,7 +60,7 @@ Dev API key: `ak_NRS6Y7FHDQAJ27RKNEQBWD660DK007PA` (from `supaflow-cli/dev.env`,
 | Script | Purpose |
 |---|---|
 | `create_smoke_pipelines.py` | Creates pipelines for every source x destination combo. Idempotent -- skips existing by `api_name`. Uses source label for pipeline prefix to avoid collisions. Has `SKIP_COMBOS` (pg-to-pg excluded) and `DESTINATION_PREFIX_QUALIFIER` (Parquet/Polaris need unique prefixes because they share the same S3 bucket). |
-| `sync_smoke_pipelines.py <destination>` | Triggers sync on all smoke pipelines whose api_name ends with `_to_<destination>_smoke_test` (suffix-anchored, so a destination like `postgresql` does NOT pull in source-side `postgresql_to_*` pipelines — that prior substring-match gotcha was fixed in commit eba917b9). Supports `--full-resync`, `--reset-target`, `--poll`. Has a `SKIP_SOURCE_PREFIXES` map for dead/rate-limited sources (Airtable). |
+| `sync_smoke_pipelines.py <destination>` | Triggers sync on all smoke pipelines whose api_name ends with `_to_<destination>_smoke_test` (suffix-anchored, so a destination like `postgresql` does NOT pull in source-side `postgresql_to_*` pipelines — that prior substring-match gotcha was fixed in commit eba917b9). Supports `--full-resync`, `--reset-target`, `--poll`. Has a `SKIP_SOURCE_PREFIXES` map for sources that are verifiably broken / quota-exhausted (currently empty as of 2026-05-09; add an entry with a reason and an expected un-skip date when needed). |
 | `verify_smoke_jobs.py <job-id>...` | Reads local agent logs. Reports per-job status/counts/deviation/warnings/errors + memory stats. Flags unknown warnings (known ones filtered by `KNOWN_WARNINGS` list). **`source_rows == dest_rows` here is from the loader's own counters** -- it does NOT compare CSV rows vs the actual destination row count. For that, use the per-destination `validate_*.py` scripts below. |
 | `validate_snowflake.py --job-id <id>` | DuckDB-based column-level comparison of Snowflake tables vs source CSV. COUNT(*), COUNT(DISTINCT) for text cols, SUM() for numeric cols. Skips `_supa_*` columns. Quote/escape on the snow CLI export was fixed in commit 75ee2ea2 -- previous AUDIT_TRAIL-style false-doubling on tables with multi-line text fields no longer happens. |
 | `validate_glue_iceberg.py --job-id <id>` | Same comparison for Glue Iceberg tables via DuckDB's `iceberg` extension. Multi-part staging CSVs are aggregated via UNION ALL (commit 75ee2ea2) so chunked sources count correctly. Requires AWS creds (`source export.env`). |
@@ -68,6 +68,7 @@ Dev API key: `ak_NRS6Y7FHDQAJ27RKNEQBWD660DK007PA` (from `supaflow-cli/dev.env`,
 | `validate_postgres.py --job-id <id>` | DuckDB-based column-level comparison of PostgreSQL destination tables vs source CSV. Uses DuckDB's `postgres` extension to query the destination. Reads `POSTGRES_*` env vars from `export.env` directly (no `DEV_SUPABASE_DB_*` remap). Added in commit 0b4ec70d. |
 | `validate_supa_passthrough.py --destination {snowflake\|glue-iceberg\|postgres} --job-id <id>` | Byte-parity check on `_supa_id` + `_supa_index` between staging CSV and destination table. Joins on `_supa_id`, compares `_supa_index` values, validates 1..N contiguity in CSV. **Use this for dlt sources (Jira, Stripe, Shopify, GitHub, GA4) to catch `_supa_*` regressions.** For Postgres specifically, this script still reads `DEV_SUPABASE_DB_*` env vars (latent naming bug) -- remap from `POSTGRES_*` in `export.env` before running. |
 | `cleanup_postgres_destination.py` | Drops every Postgres-destination schema matching `%smoke_test%` (uses `POSTGRES_*` from `export.env`). Default is dry-run; pass `--apply` to actually drop. Reports DB size before/after. Run as the last step of the postgres-destination smoke flow once both `validate_postgres.py` and `validate_supa_passthrough.py` are green. Pattern is the SQL `LIKE` pattern -- override with `--pattern` if needed. |
+| `cleanup_s3_destination.py` | S3 counterpart to the postgres cleanup. Enumerates top-level dirs under `s3://<bucket>/<root_prefix>/` matching `*smoke_test*` (default; pattern overridable) and, with `--apply`, deletes every object beneath them. Captures both `supaflowpy_*` (Iceberg) and `supaflowparquet_*` (Parquet) layouts in one pass without consulting Glue or the CLI. **Mandatory before re-syncing any S3-destination smoke pipeline whose pipeline state was reset** -- the S3 connector's `_enforce_empty_destination_on_first_run` safety check fails loud on a non-empty `<schema>/<table>/` prefix (the gold-standard contract; the smoke harness owns cleanup). Reads `AWS_S3_*` env vars from `export.env`; `AWS_S3_EXTERNAL_ID` is optional. Requires boto3 -- the S3 connector venv has it; run via `"$(ls -d data/supaflow-agent/global/connector-envs/io/supaflow/supaflow-connector-s3-python/*/darwin-arm64-py314/envs/*/venv | head -1)/bin/python3" scripts/smoke/cleanup_s3_destination.py [...]`. |
 
 **`validate_postgres.py` exists** (added 2026-04-27, commit 0b4ec70d). Mirrors the snowflake/iceberg validators: parses the job log for `<schema>.<table>` mappings, reads multi-part staging CSV with RFC-4180 quoting, queries postgres via DuckDB's `postgres` extension, compares row count + per-column COUNT(DISTINCT) + numeric SUM. `validate_supa_passthrough.py --destination postgres` is still the path for `_supa_*` byte-parity (dlt sources). When using passthrough on postgres, remap `POSTGRES_*` env vars to `DEV_SUPABASE_DB_*` first -- latent naming bug in that script.
 
@@ -126,7 +127,7 @@ python3 supaflow-platform/scripts/smoke/sync_smoke_pipelines.py postgresql --ful
 
 `SKIP_SOURCE_PREFIXES` in `sync_smoke_pipelines.py` excludes:
 
-- `airtable` -- rate-limited for the month (Airtable's free tier allows a limited number of API calls per month). Returns 2026-05-01.
+- (currently empty as of 2026-05-09 -- airtable was returned to the matrix once its monthly quota reset)
 - `sql_server` was previously skipped (Azure SQL test instance dead) but is back live (use `sql_server_qdvbd4` datasource).
 
 Check and update this map before a smoke run if any source is known-broken.
@@ -204,7 +205,7 @@ These are filtered out by the script's `KNOWN_WARNINGS` list. If you see them in
 
 ### Release criteria for this step
 
-- `FAIL: 0` across the batch (excluding known source skips like Airtable/SQL Server)
+- `FAIL: 0` across the batch (excluding any sources currently in `SKIP_SOURCE_PREFIXES`)
 - `deviation: 0` on every passing job (source_rows == dest_rows)
 - No unknown ERRORs reported
 - Memory headroom > 0 (if container peak == limit, flag it even if jobs pass -- we're one load-spike away from OOM)
@@ -356,6 +357,42 @@ The script:
 
 ---
 
+## 6c. Wipe S3 destination prefixes (S3-destination resets only)
+
+The S3 connector's first-run safety check (`_enforce_empty_destination_on_first_run` in Python `connector.py`; mirrored in Java `S3Connector.enforceEmptyDestinationOnFirstRun`) refuses to write when `<schema>/<table>/` already contains data. This is the **gold-standard contract** -- two pipelines accidentally pointing at the same prefix would silently orphan each other's data without it. **Don't try to bypass it from the connector with versioned paths or any other hack** (we tried that 2026-05-08 with a `v_<ts>_<jdid>` segment and reverted; the smoke harness owns cleanup).
+
+When a smoke flow recreates a pipeline under a deterministic prefix (every smoke pipeline does), the previous run's files are still in S3, so the next first-run sync fails the empty-prefix check. The smoke harness handles this with `cleanup_s3_destination.py`:
+
+```bash
+cd supaflow-platform
+source export.env
+
+# Resolve the S3 connector venv once (boto3 is there, not in the workspace python)
+VENV=$(ls -d data/supaflow-agent/global/connector-envs/io/supaflow/\
+supaflow-connector-s3-python/*/darwin-arm64-py314/envs/*/venv | head -1)
+
+# Dry-run -- list which top-level prefixes match `*smoke_test*` and total size
+"$VENV/bin/python3" scripts/smoke/cleanup_s3_destination.py
+
+# Wipe them
+"$VENV/bin/python3" scripts/smoke/cleanup_s3_destination.py --apply -y
+
+# Scope to one pipeline / one pattern (e.g. just the parquet variants)
+"$VENV/bin/python3" scripts/smoke/cleanup_s3_destination.py \
+    --pattern '*parquet_smoke_test*' --apply -y
+```
+
+The script:
+- Enumerates `s3://<bucket>/<root_prefix>/*` via `ListObjectsV2(Delimiter='/')` and filters dir names against `--pattern`. Captures both `supaflowpy_*` (Iceberg) and `supaflowparquet_*` (Parquet) layouts in one pass without consulting Glue or the CLI.
+- Reads `AWS_S3_BUCKET / AWS_S3_PREFIX_PATH / AWS_S3_REGION / AWS_S3_ROLE_ARN` from env (`source export.env`); `AWS_S3_EXTERNAL_ID` is optional.
+- Default dry-run; `--apply` deletes; `-y` skips the confirmation prompt.
+
+**When to run it:** any time a smoke flow involves `--reset-target` + an S3 destination + a recreated pipeline (which is essentially every smoke iteration). Verified end-to-end 2026-05-09: wiping 11942 objects across 68 prefixes (1.3 GB), then 16 sources × 3 destinations (Snowflake / Glue Iceberg / Parquet) all re-synced PASS deviation=0 against the restored gold-standard check.
+
+**Order matters.** Run cleanup *after* validators on the prior batch (validators read S3 data); leave the prefix in place if validation failed and re-run cleanup once the issue is resolved.
+
+---
+
 ## 7. Known-broken / in-flight issues
 
 Watch for these; do not treat them as "unknown" failures:
@@ -395,6 +432,7 @@ Watch for these; do not treat them as "unknown" failures:
 7. **Show errors verbatim.** If a create/sync/validate command fails, show the full error and ask the user what to do. Never silently rename, retry, or auto-recover.
 8. **Don't add defaults for decisions.** Object scope (all vs subset), destination selection, and `--reset-target` behavior are required user choices -- ask, don't assume.
 9. **Always run `cleanup_postgres_destination.py --apply` after a green postgres-destination batch.** Smoke schemas accumulate at ~880 MB per matrix run and will trip Supabase free-tier limits within a few cycles. Skip cleanup only if validation failed and you need the destination state for diagnosis -- in which case re-run cleanup once the issue is resolved.
+10. **Always run `cleanup_s3_destination.py --apply -y` before re-syncing S3 destinations on a recreated pipeline.** The connector's `_enforce_empty_destination_on_first_run` check is gold standard and intentionally fails loud on a non-empty prefix; the smoke harness owns cleanup. Skip cleanup only if you've left destination state in place on purpose for diagnosis -- in which case re-run cleanup once the issue is resolved. Do NOT propose changing the connector to bypass the check (we tried; reverted).
 
 ---
 
