@@ -1,6 +1,6 @@
 ---
 name: running-smoke-tests
-description: Run the end-to-end Supaflow smoke test suite against local dev -- create pipelines, sync by destination, verify job logs, and compare destination data against source staging CSVs (including `_supa_id` / `_supa_index` passthrough parity)
+description: Run the end-to-end Supaflow smoke test suite against local dev -- create pipelines, sync by destination, verify job logs, and compare destination data against source staging files (CSV or JSONL, including `_supa_id` / `_supa_index` passthrough parity)
 ---
 
 # Running Smoke Tests in Dev
@@ -9,8 +9,8 @@ Use this skill when the user asks to run smoke tests, validate a release end-to-
 
 **Do not skip validation.** A passing job status is not enough. The release is only green when:
 1. All jobs reach `PASS` in `verify_smoke_jobs.py`, AND
-2. Destination data matches source CSV (row counts + column aggregates) via the per-destination `validate_*.py` script, AND
-3. For dlt-based sources (Jira, Stripe), `_supa_id` + `_supa_index` byte-parity is verified via `validate_supa_passthrough.py`.
+2. Destination data matches source -- per-object format picks the validator: `validate_*.py` for CSV; `validate_snowflake_jsonl.py` for JSONL on Snowflake. JSONL on Glue/Postgres has no full-data validator yet -- report that coverage gap, do not count its SKIPs as a pass, AND
+3. For every dlt Python source (all are JSONL-certified as of 2026-05-16: Jira, MongoDB, MySQL, Stripe, Shopify, GitHub, GA4), `_supa_id` + `_supa_index` byte-parity is verified via `validate_supa_passthrough.py` (handles CSV and JSONL staging; `--destination` snowflake / glue-iceberg / postgres).
 
 ---
 
@@ -57,18 +57,31 @@ Dev API key: `ak_NRS6Y7FHDQAJ27RKNEQBWD660DK007PA` (from `supaflow-cli/dev.env`,
 
 ## 1. Scripts (all in `supaflow-platform/scripts/smoke/`)
 
+**Run every Python smoke script through `scripts/smoke/run.sh`.** (Shell helpers like `docker_regression_run.sh` are run directly, not wrapped by `run.sh`.) It is a thin dispatcher that fixes the environment once instead of per-invocation: `cd`s to the repo root, selects the repo `python/.venv` (has `duckdb` + `boto3`; fails fast with a `setup-dev-env.sh` hint if absent), sources `export.env` if present, sets `PYTHONPATH=python`, and defaults `SUPAFLOW_APP_URL` to `http://localhost:3000` when unset (a value already exported wins). Then it `exec`s the venv python on the target with all args forwarded.
+
+```bash
+cd supaflow-platform
+scripts/smoke/run.sh --list                       # list available scripts
+scripts/smoke/run.sh verify_smoke_jobs.py <job-id>
+scripts/smoke/run.sh validate_snowflake_jsonl.py --job-id <id> --datasource mysql
+```
+
+Most direct Python smoke-script invocations (`python3 scripts/smoke/X.py ...` or `PYTHONPATH=python python3 ...`) should be replaced by `scripts/smoke/run.sh X.py ...`; the bare-`python3` forms still work if you set up the env yourself. Keep any caller-shell setup that feeds extra exported variables into the child process, such as the Postgres `DEV_SUPABASE_DB_*` remap in section 6. This wrapper removes the recurring "cd away from `supaflow-platform/` breaks relative paths" and "ran under system python -> `ModuleNotFoundError: duckdb`" failure classes.
+
 | Script | Purpose |
 |---|---|
+| `run.sh <script[.py]> [args...]` | Generic dispatcher (above). `--list` prints available scripts. Use it for Python smoke scripts below unless a section explicitly requires caller-shell setup before invoking the script. |
 | `create_smoke_pipelines.py` | Creates pipelines for every source x destination combo. Idempotent -- skips existing by `api_name`. Uses source label for pipeline prefix to avoid collisions. Has `SKIP_COMBOS` (pg-to-pg excluded) and `DESTINATION_PREFIX_QUALIFIER` (Parquet/Polaris need unique prefixes because they share the same S3 bucket). |
 | `sync_smoke_pipelines.py <destination>` | Triggers sync on all smoke pipelines whose api_name ends with `_to_<destination>_smoke_test` (suffix-anchored, so a destination like `postgresql` does NOT pull in source-side `postgresql_to_*` pipelines — that prior substring-match gotcha was fixed in commit eba917b9). Supports `--full-resync`, `--reset-target`, `--poll`. Has a `SKIP_SOURCE_PREFIXES` map for sources that are verifiably broken / quota-exhausted (currently empty as of 2026-05-09; add an entry with a reason and an expected un-skip date when needed). |
 | `verify_smoke_jobs.py <job-id>...` | Reads local agent logs. Reports per-job status/counts/deviation/warnings/errors + memory stats. Flags unknown warnings (known ones filtered by `KNOWN_WARNINGS` list). **`source_rows == dest_rows` here is from the loader's own counters** -- it does NOT compare CSV rows vs the actual destination row count. For that, use the per-destination `validate_*.py` scripts below. |
 | `validate_snowflake.py --job-id <id>` | DuckDB-based column-level comparison of Snowflake tables vs source CSV. COUNT(*), COUNT(DISTINCT) for text cols, SUM() for numeric cols. Skips `_supa_*` columns. Quote/escape on the snow CLI export was fixed in commit 75ee2ea2 -- previous AUDIT_TRAIL-style false-doubling on tables with multi-line text fields no longer happens. |
+| `validate_snowflake_jsonl.py --job-id <id> {--datasource <api>\|--source-catalog <path>}` | JSONL counterpart of `validate_snowflake.py` for pipelines whose `StageFormatDecision` selected JSONL (all dlt Python connectors are JSONL-certified -- confirm per job, do not assume by connector). Compares source JSONL staging vs Snowflake: field-set strict equality, row count, per-column value-frequency multiset, numeric SUM -- typed from the **source** catalog so source->dest type-mapping bugs can't be masked. `--datasource <api_name>` auto-exports + caches the catalog at `scripts/smoke/.smoke-run/catalogs/<api_name>.json` (gitignored), exporting only when absent; `--refresh-catalog` re-fetches the local cache from Supabase (the platform's already-discovered catalog -- it does NOT trigger datasource schema discovery; use it when the smoke flow re-ran discovery and the local cache is now stale); `--source-catalog <path>` is an explicit override. Exactly one of `--datasource`/`--source-catalog` is required. |
 | `validate_glue_iceberg.py --job-id <id>` | Same comparison for Glue Iceberg tables via DuckDB's `iceberg` extension. Multi-part staging CSVs are aggregated via UNION ALL (commit 75ee2ea2) so chunked sources count correctly. Requires AWS creds (`source export.env`). |
 | `validate_glue_parquet.py --job-id <id>` | Same comparison for Glue Parquet tables. Same multi-part fix as iceberg. Requires AWS creds. |
 | `validate_postgres.py --job-id <id>` | DuckDB-based column-level comparison of PostgreSQL destination tables vs source CSV. Uses DuckDB's `postgres` extension to query the destination. Reads `POSTGRES_*` env vars from `export.env` directly (no `DEV_SUPABASE_DB_*` remap). Added in commit 0b4ec70d. |
-| `validate_supa_passthrough.py --destination {snowflake\|glue-iceberg\|postgres} --job-id <id>` | Byte-parity check on `_supa_id` + `_supa_index` between staging CSV and destination table. Joins on `_supa_id`, compares `_supa_index` values, validates 1..N contiguity in CSV. **Use this for dlt sources (Jira, Stripe, Shopify, GitHub, GA4) to catch `_supa_*` regressions.** For Postgres specifically, this script still reads `DEV_SUPABASE_DB_*` env vars (latent naming bug) -- remap from `POSTGRES_*` in `export.env` before running. |
+| `validate_supa_passthrough.py --destination {snowflake\|glue-iceberg\|postgres} --job-id <id>` | Byte-parity check on `_supa_id` + `_supa_index` between the staging file and destination table. Reads **CSV or JSONL** staging (`success_part_*.{csv,jsonl}`, detected per object from disk), joins on `_supa_id`, compares `_supa_index`, validates 1..N contiguity. **Use this for every dlt Python source (Jira, MongoDB, MySQL, Stripe, Shopify, GitHub, GA4) to catch `_supa_*` regressions** -- it is the only `_supa_*` validator that works on JSONL staging for all three destinations. (`glue-parquet` is not covered -- see note at the end of section 6.) For Postgres, this script still reads `DEV_SUPABASE_DB_*` env vars (latent naming bug) -- remap from `POSTGRES_*` in `export.env` before running. |
 | `cleanup_postgres_destination.py` | Drops every Postgres-destination schema matching `%smoke_test%` (uses `POSTGRES_*` from `export.env`). Default is dry-run; pass `--apply` to actually drop. Reports DB size before/after. Run as the last step of the postgres-destination smoke flow once both `validate_postgres.py` and `validate_supa_passthrough.py` are green. Pattern is the SQL `LIKE` pattern -- override with `--pattern` if needed. |
-| `cleanup_s3_destination.py` | S3 counterpart to the postgres cleanup. Enumerates top-level dirs under `s3://<bucket>/<root_prefix>/` matching `*smoke_test*` (default; pattern overridable) and, with `--apply`, deletes every object beneath them. Captures both `supaflowpy_*` (Iceberg) and `supaflowparquet_*` (Parquet) layouts in one pass without consulting Glue or the CLI. **Mandatory before re-syncing any S3-destination smoke pipeline whose pipeline state was reset** -- the S3 connector's `_enforce_empty_destination_on_first_run` safety check fails loud on a non-empty `<schema>/<table>/` prefix (the gold-standard contract; the smoke harness owns cleanup). Reads `AWS_S3_*` env vars from `export.env`; `AWS_S3_EXTERNAL_ID` is optional. Requires boto3 -- the S3 connector venv has it; run via `"$(ls -d data/supaflow-agent/global/connector-envs/io/supaflow/supaflow-connector-s3-python/*/darwin-arm64-py314/envs/*/venv | head -1)/bin/python3" scripts/smoke/cleanup_s3_destination.py [...]`. |
+| `cleanup_s3_destination.py` | S3 counterpart to the postgres cleanup. Enumerates top-level dirs under `s3://<bucket>/<root_prefix>/` matching `*smoke_test*` (default; pattern overridable) and, with `--apply`, deletes every object beneath them. Captures both `supaflowpy_*` (Iceberg) and `supaflowparquet_*` (Parquet) layouts in one pass without consulting Glue or the CLI. **Mandatory before re-syncing any S3-destination smoke pipeline whose pipeline state was reset** -- the S3 connector's `_enforce_empty_destination_on_first_run` safety check fails loud on a non-empty `<schema>/<table>/` prefix (the gold-standard contract; the smoke harness owns cleanup). Reads `AWS_S3_*` env vars from `export.env`; `AWS_S3_EXTERNAL_ID` is optional. Requires boto3 -- `scripts/smoke/run.sh cleanup_s3_destination.py [...]` covers it (the repo `python/.venv` has boto3 and `run.sh` sources `export.env`), superseding the older S3-connector-venv glob (`data/supaflow-agent/global/connector-envs/.../supaflow-connector-s3-python/.../venv/bin/python3`), which is still a valid fallback if the dev venv is unavailable. |
 
 **`validate_postgres.py` exists** (added 2026-04-27, commit 0b4ec70d). Mirrors the snowflake/iceberg validators: parses the job log for `<schema>.<table>` mappings, reads multi-part staging CSV with RFC-4180 quoting, queries postgres via DuckDB's `postgres` extension, compares row count + per-column COUNT(DISTINCT) + numeric SUM. `validate_supa_passthrough.py --destination postgres` is still the path for `_supa_*` byte-parity (dlt sources). When using passthrough on postgres, remap `POSTGRES_*` env vars to `DEV_SUPABASE_DB_*` first -- latent naming bug in that script.
 
@@ -77,8 +90,8 @@ Dev API key: `ak_NRS6Y7FHDQAJ27RKNEQBWD660DK007PA` (from `supaflow-cli/dev.env`,
 ## 2. Create pipelines
 
 ```bash
-export SUPAFLOW_APP_URL=http://localhost:3000
-python3 supaflow-platform/scripts/smoke/create_smoke_pipelines.py
+# run.sh defaults SUPAFLOW_APP_URL + sources export.env; auth login (section 0) is the prerequisite.
+supaflow-platform/scripts/smoke/run.sh create_smoke_pipelines.py
 ```
 
 Creates up to ~70 pipelines (14 sources x 5 destinations, minus pg-to-pg). Idempotent. Output summary shows `Created`, `Skipped`, `Failed`. If any fail, stop and show the user the error -- never silently retry or rename.
@@ -86,6 +99,8 @@ Creates up to ~70 pipelines (14 sources x 5 destinations, minus pg-to-pg). Idemp
 **Before creating:** if the sources include new connectors (e.g., Jira, Stripe), verify the datasource `api_name` values in the script's `SOURCES` tuple against the actual dev datasources:
 
 ```bash
+# Bare `supaflow` CLI (not a smoke script) -- export the URL yourself; run.sh does not wrap this.
+export SUPAFLOW_APP_URL=http://localhost:3000
 supaflow datasources list --limit 200 --json | \
     python3 -c "import sys,json; d=json.loads(sys.stdin.read()); [print(x['api_name'], x['name']) for x in d.get('data', [])]"
 ```
@@ -99,22 +114,22 @@ Update `SOURCES` in `create_smoke_pipelines.py` if api_names differ.
 **Run destination-by-destination, not all at once.** Agent concurrency and memory headroom are limited. Between batches, verify and investigate any failures before moving on.
 
 ```bash
-export SUPAFLOW_APP_URL=http://localhost:3000
+# run.sh defaults SUPAFLOW_APP_URL + sources export.env; auth login (section 0) is the prerequisite.
 
 # Snowflake (no target reset needed for first run)
-python3 supaflow-platform/scripts/smoke/sync_smoke_pipelines.py snowflake --full-resync
+supaflow-platform/scripts/smoke/run.sh sync_smoke_pipelines.py snowflake --full-resync
 
 # S3 Data Lake (Glue) -- needs --reset-target to drop stale Iceberg tables from prior runs
-python3 supaflow-platform/scripts/smoke/sync_smoke_pipelines.py s3_data_lake --full-resync --reset-target
+supaflow-platform/scripts/smoke/run.sh sync_smoke_pipelines.py s3_data_lake --full-resync --reset-target
 
 # S3 Data Lake Parquet -- same
-python3 supaflow-platform/scripts/smoke/sync_smoke_pipelines.py s3_dl_parquet --full-resync --reset-target
+supaflow-platform/scripts/smoke/run.sh sync_smoke_pipelines.py s3_dl_parquet --full-resync --reset-target
 
 # S3 DL Polaris -- needs --reset-target AND Snowflake Open Catalog setup (credentials + network)
-python3 supaflow-platform/scripts/smoke/sync_smoke_pipelines.py s3_dl_polaris --full-resync --reset-target
+supaflow-platform/scripts/smoke/run.sh sync_smoke_pipelines.py s3_dl_polaris --full-resync --reset-target
 
 # PostgreSQL destination
-python3 supaflow-platform/scripts/smoke/sync_smoke_pipelines.py postgresql --full-resync
+supaflow-platform/scripts/smoke/run.sh sync_smoke_pipelines.py postgresql --full-resync
 ```
 
 **Save the printed job IDs.** `verify_smoke_jobs.py` and the validators need them. The sync script writes them to stdout after submitting the batch.
@@ -132,20 +147,20 @@ python3 supaflow-platform/scripts/smoke/sync_smoke_pipelines.py postgresql --ful
 
 Check and update this map before a smoke run if any source is known-broken.
 
-### Docker release-regression one-shot
+### Docker Jira + Stripe regression helper
 
-For the standard release-smoke matrix (dlt sources x all 3 destinations, Docker agent), there is a pre-baked helper:
+`docker_regression_run.sh` is a **narrow** pre-baked helper -- it queues **only Jira + Stripe** against Snowflake, Postgres, and S3 Data Lake (6 jobs) with the right flags (`--full-resync` on SF/PG, `--full-resync --reset-target` on S3 Data Lake), writing the job IDs to `.docker_regression_jobs.txt` (gitignored):
 
 ```bash
 cd supaflow-platform
-./scripts/smoke/docker_regression_run.sh
+./scripts/smoke/docker_regression_run.sh   # shell helper -- run directly, not via run.sh
 ```
 
-It kicks off Jira + Stripe against Snowflake, Postgres, and S3 Data Lake with the right flag combination (`--full-resync` on SF/PG, `--full-resync --reset-target` on S3 Data Lake) and writes the 6 job IDs to `.docker_regression_jobs.txt` (gitignored). Use this as the default for release smoke; fall back to the one-pipeline-at-a-time recipe below only when running a narrower subset.
+It does **NOT** cover the other JSONL-certified dlt sources (MongoDB, MySQL, Shopify, GitHub, GA4), so it is **not** a full release smoke -- it is only a fast Jira/Stripe regression check. A green release per the criteria at the top of this skill requires the full matrix (sections 2-3) across every dlt Python source; use this helper only for a targeted Jira/Stripe re-run.
 
 ### Running a subset of source pipelines for one destination
 
-`sync_smoke_pipelines.py` filters by **destination** only -- no `--sources` flag. When the release scope calls for "just the dlt sources (Jira + Stripe) against PG and S3 Data Lake" (e.g., re-running after a fix that only affects those), do not try to shoehorn this into the batch script. Invoke `supaflow pipelines sync` one pipeline at a time:
+`sync_smoke_pipelines.py` filters by **destination** only -- no `--sources` flag. When the release scope calls for "just a subset of dlt sources (e.g. Jira + Stripe) against PG and S3 Data Lake" (e.g., re-running after a fix that only affects those), do not try to shoehorn this into the batch script. Invoke `supaflow pipelines sync` one pipeline at a time:
 
 ```bash
 export SUPAFLOW_APP_URL=http://localhost:3000
@@ -173,7 +188,7 @@ Capture the printed `job_id` from each response and feed them into `verify_smoke
 Once a batch completes, run the verifier against **all** job IDs from that destination. It parses local agent logs at `data/tenants/c42614a7-a6a8-4b34-a0ea-83efa6c08a30/jobs/<job-id>/logs/job.log`.
 
 ```bash
-python3 supaflow-platform/scripts/smoke/verify_smoke_jobs.py <job-id-1> <job-id-2> ...
+supaflow-platform/scripts/smoke/run.sh verify_smoke_jobs.py <job-id-1> <job-id-2> ...
 ```
 
 Output:
@@ -212,30 +227,33 @@ These are filtered out by the script's `KNOWN_WARNINGS` list. If you see them in
 
 ---
 
-## 5. Validate data (destination vs source CSV)
+## 5. Validate data (destination vs source staging)
 
-For each destination, run the corresponding validator for the jobs that passed verification. These compare actual destination data against the source staging CSVs using DuckDB aggregates.
+For each destination, run the corresponding validator for the jobs that passed verification. These compare actual destination data against the source staging files (CSV or JSONL) using DuckDB aggregates.
 
 All validators expect to be run **from `supaflow-platform/`** (their relative paths like `scripts/smoke/` and `data/tenants/` resolve from there).
 
-> **JSONL-pipeline gap (validator only reads `.csv`).** All `validate_*.py` and `validate_supa_passthrough.py` scripts read the staging CSV via DuckDB. If the planner picked JSONL for the pipeline (look for `[V2] StageFormatDecision ... selected=JSONL` in the job log), every object is reported as `SKIP` with reason `(no source CSV)` -- the staging file exists, just as `.jsonl`. This is a validator-side gap, NOT a load failure. Today only connectors with `SPEC.use_full_normalize=True` (Jira, MongoDB) take the JSONL path; the others (Stripe, GitHub, Shopify, GA4) route through `LEGACY_CSV_RUNTIME_NOT_PYTHON` and the validators work normally on them.
->
-> For JSONL pipelines, use the direct-Snowflake sanity SQL in section 5b until the validators learn `.jsonl`.
+> **JSONL pipelines (`StageFormatDecision ... selected=JSONL`).** Whether a pipeline stages `.jsonl` or `.csv` is a per-job runtime decision, NOT a fixed connector property -- **do not rely on a static connector list** (this guidance has drifted before). As of 2026-05-16 every dlt Python connector is `use_full_normalize=True` + `jsonl_certified=True` (Jira, MongoDB, MySQL, Stripe, Shopify, GitHub, GA4), so with the cert flag on in local dev they select JSONL; only legacy/Java-runtime connectors stay CSV. Decide per job from the log, not from memory:
+> ```bash
+> grep '\[V2\] StageFormatDecision' data/tenants/c42614a7-.../jobs/<job-id>/logs/job.log | head
+> ```
+> - `selected=JSONL` + **Snowflake** destination: use `validate_snowflake_jsonl.py` (`--datasource <api>` auto-exports the source catalog) -- full source-vs-destination comparison.
+> - `selected=JSONL` + **Glue or Postgres** destination: no **full-data** validator yet -- `validate_glue_*.py` / `validate_postgres.py` are CSV-only and report `SKIP (no source CSV)`, and the section-5b SQL is Snowflake-only. **But `validate_supa_passthrough.py` still applies** -- it reads `.jsonl` staging and supports `--destination glue-iceberg` / `postgres`, so run it for `_supa_id` / `_supa_index` parity. Treat only the missing full-data comparison as a **coverage gap: report it**, and do not count the full-data-validator SKIPs as a pass.
+> - `selected=CSV`: use the CSV validators normally.
 
 ```bash
 cd supaflow-platform
 
-# Snowflake (no env needed beyond snow CLI config)
-python3 scripts/smoke/validate_snowflake.py --job-id <job-id>
-python3 scripts/smoke/validate_snowflake.py --job-id <job-id> --objects Customer Event  # subset
+# Snowflake -- CSV pipelines
+scripts/smoke/run.sh validate_snowflake.py --job-id <job-id>
+scripts/smoke/run.sh validate_snowflake.py --job-id <job-id> --objects Customer Event  # subset
 
-# Glue Iceberg (needs AWS creds)
-source export.env
-PYTHONPATH=python python3 scripts/smoke/validate_glue_iceberg.py --job-id <job-id>
+# Snowflake -- JSONL pipelines (any source whose StageFormatDecision=JSONL)
+scripts/smoke/run.sh validate_snowflake_jsonl.py --job-id <job-id> --datasource <api_name>
 
-# Glue Parquet (needs AWS creds)
-source export.env
-PYTHONPATH=python python3 scripts/smoke/validate_glue_parquet.py --job-id <job-id>
+# Glue Iceberg / Parquet (run.sh sources export.env + sets PYTHONPATH)
+scripts/smoke/run.sh validate_glue_iceberg.py --job-id <job-id>
+scripts/smoke/run.sh validate_glue_parquet.py --job-id <job-id>
 ```
 
 Output:
@@ -252,7 +270,7 @@ Output:
 
 ## 5b. Direct-Snowflake sanity SQL for JSONL pipelines
 
-Until the CSV-based validators learn to read `.jsonl`, fall back to a direct sanity query against Snowflake for any pipeline whose `[V2] StageFormatDecision` was `selected=JSONL`. The query checks four invariants per object:
+For Snowflake JSONL pipelines `validate_snowflake_jsonl.py` (section 5) is the primary validator; this direct sanity query is a deeper byte-structure cross-check on top of it. **It queries Snowflake tables only (`SUPA_DB.<schema>.<table>`) -- it cannot validate a Glue or Postgres destination.** JSONL pipelines on Glue/Postgres have no destination validator today; report that coverage gap rather than substituting this SQL. For any Snowflake pipeline whose `[V2] StageFormatDecision` was `selected=JSONL`, it checks four invariants per object:
 
 1. `COUNT(*)` matches the expected source row count.
 2. `COUNT(DISTINCT _supa_id) == COUNT(*)` (no collisions, no nulls).
@@ -272,24 +290,22 @@ ORDER BY t;
 
 Cross-check the `users` row against the Phase 4 Task 12 gold reference recorded in `memory/project_mapped_record_write_plan.md` (19 rows, 19 unique `_supa_id`, all 64-char hex, contiguous 1..19). If `users` matches, the spool + JSONL emitter + Snowflake JSON COPY chain has produced the same byte structure as the proven A/B run.
 
-This is the only way to certify a JSONL pipeline today; do NOT mark a JSONL run "validated" on the strength of `verify_smoke_jobs.py` alone -- that script reads loader counters, not destination state.
+Whichever path you use (`validate_snowflake_jsonl.py` or this SQL), do NOT mark a JSONL run "validated" on the strength of `verify_smoke_jobs.py` alone -- that script reads loader counters, not destination state.
 
 ---
 
 ## 6. Validate `_supa_id` / `_supa_index` passthrough (dlt sources only)
 
-For dlt-based sources (Jira, Stripe as of 2026-04), the Python SDK emits source-owned `_supa_id` and `_supa_index` values. These MUST be preserved byte-for-byte through staging CSV -> destination table. Run:
+Every dlt Python source emits source-owned `_supa_id` and `_supa_index` values (as of 2026-05-16: Jira, MongoDB, MySQL, Stripe, Shopify, GitHub, GA4 -- all JSONL-certified). These MUST be preserved byte-for-byte through the staging file (CSV or JSONL) -> destination table. `validate_supa_passthrough.py` detects the staging format per object, so it applies regardless of `StageFormatDecision`. Run:
 
 ```bash
-cd supaflow-platform
+# run.sh sources export.env + selects the venv. Snowflake also needs snow CLI config.
+supaflow-platform/scripts/smoke/run.sh validate_supa_passthrough.py --destination snowflake --job-id <id>
 
-# Snowflake -- no env needed beyond snow CLI config
-python3 scripts/smoke/validate_supa_passthrough.py --destination snowflake --job-id <id>
-
-# Glue Iceberg -- needs AWS creds from export.env + S3 prefix
-source export.env
-python3 scripts/smoke/validate_supa_passthrough.py --destination glue-iceberg \
-    --job-id <id> --s3-prefix-path "${AWS_S3_PREFIX_PATH:-supa-prefix}"
+# Glue Iceberg -- pass the S3 prefix literally (it lives in export.env as AWS_S3_PREFIX_PATH;
+# the arg is expanded by YOUR shell before run.sh runs, so don't rely on $AWS_S3_PREFIX_PATH here).
+supaflow-platform/scripts/smoke/run.sh validate_supa_passthrough.py --destination glue-iceberg \
+    --job-id <id> --s3-prefix-path <s3-prefix-path>
 
 # PostgreSQL destination -- requires a remap step, see below
 ```
@@ -298,13 +314,15 @@ python3 scripts/smoke/validate_supa_passthrough.py --destination glue-iceberg \
 
 ```bash
 cd supaflow-platform
+# The remap must be exported in YOUR shell -- run.sh re-sources export.env (which does
+# not define DEV_SUPABASE_DB_*), so these inherited exports survive into the child.
 source export.env
 export DEV_SUPABASE_DB_HOST="$POSTGRES_HOST"
 export DEV_SUPABASE_DB_PORT="$POSTGRES_PORT"
 export DEV_SUPABASE_DB_USER="$POSTGRES_USER"
 export DEV_SUPABASE_DB_PASSWORD="$POSTGRES_PASSWORD"
 export DEV_SUPABASE_DB_NAME="$POSTGRES_DATABASE"
-python3 scripts/smoke/validate_supa_passthrough.py --destination postgres --job-id <id>
+scripts/smoke/run.sh validate_supa_passthrough.py --destination postgres --job-id <id>
 ```
 
 If the destination read fails with `relation "<pipeline_prefix>.<table>" does not exist`, you are almost certainly pointed at the control-plane Supabase instead of the PG destination -- re-export from `POSTGRES_*` and retry. The `validate_supa_passthrough.py` envvar naming is a latent bug; when fixed the remap step goes away.
@@ -341,10 +359,9 @@ The Postgres-destination smoke flow writes per-source schemas (`oracle_tm_smoke_
 Once steps 5 (and 6 if dlt sources are in scope) are green for the entire postgres batch, run:
 
 ```bash
-cd supaflow-platform
-source export.env
-python3 scripts/smoke/cleanup_postgres_destination.py            # dry-run: lists matching schemas
-python3 scripts/smoke/cleanup_postgres_destination.py --apply    # drops every schema matching '%smoke_test%'
+# run.sh sources export.env (POSTGRES_*) + selects the venv.
+supaflow-platform/scripts/smoke/run.sh cleanup_postgres_destination.py            # dry-run: lists matching schemas
+supaflow-platform/scripts/smoke/run.sh cleanup_postgres_destination.py --apply    # drops every schema matching '%smoke_test%'
 ```
 
 The script:
@@ -364,23 +381,20 @@ The S3 connector's first-run safety check (`_enforce_empty_destination_on_first_
 When a smoke flow recreates a pipeline under a deterministic prefix (every smoke pipeline does), the previous run's files are still in S3, so the next first-run sync fails the empty-prefix check. The smoke harness handles this with `cleanup_s3_destination.py`:
 
 ```bash
-cd supaflow-platform
-source export.env
-
-# Resolve the S3 connector venv once (boto3 is there, not in the workspace python)
-VENV=$(ls -d data/supaflow-agent/global/connector-envs/io/supaflow/\
-supaflow-connector-s3-python/*/darwin-arm64-py314/envs/*/venv | head -1)
+# run.sh sources export.env (AWS_S3_*) and uses python/.venv (has boto3).
 
 # Dry-run -- list which top-level prefixes match `*smoke_test*` and total size
-"$VENV/bin/python3" scripts/smoke/cleanup_s3_destination.py
+supaflow-platform/scripts/smoke/run.sh cleanup_s3_destination.py
 
 # Wipe them
-"$VENV/bin/python3" scripts/smoke/cleanup_s3_destination.py --apply -y
+supaflow-platform/scripts/smoke/run.sh cleanup_s3_destination.py --apply -y
 
 # Scope to one pipeline / one pattern (e.g. just the parquet variants)
-"$VENV/bin/python3" scripts/smoke/cleanup_s3_destination.py \
+supaflow-platform/scripts/smoke/run.sh cleanup_s3_destination.py \
     --pattern '*parquet_smoke_test*' --apply -y
 ```
+
+(The older S3-connector-venv glob -- `data/supaflow-agent/global/connector-envs/.../supaflow-connector-s3-python/.../venv/bin/python3` -- is a valid fallback only if `python/.venv` is unavailable.)
 
 The script:
 - Enumerates `s3://<bucket>/<root_prefix>/*` via `ListObjectsV2(Delimiter='/')` and filters dir names against `--pattern`. Captures both `supaflowpy_*` (Iceberg) and `supaflowparquet_*` (Parquet) layouts in one pass without consulting Glue or the CLI.
@@ -411,12 +425,12 @@ Watch for these; do not treat them as "unknown" failures:
 - **The verifier's `deviation=0` is loader-internal.** It compares the loader's own "rows read" vs "rows written" counters -- it does NOT see the staging CSV row count vs the actual destination COUNT(*). Use the per-destination `validate_*.py` scripts to catch CSV-vs-destination divergence (e.g. dedup-via-MERGE losing rows, COPY parsing failing silently).
 - **`--reset-target` to test CREATE-path fixes.** Some bugs only trigger when the loader runs CREATE TABLE / DDL paths -- subsequent runs into existing tables work fine. The HubSpot 63-char column-collision bug was one of these: the failing tables already existed in Postgres from prior runs, so the second run's MERGE-into-existing path masked the bug. When validating any schema/DDL fix, run with `--full-resync --reset-target` to force the CREATE path.
 - **For docker-vs-local divergence, diff the agent log lines.** The successful run on the local Java agent vs the failed run on docker will surface the missing code path. Example: `[managed-oauth] refreshed OAuth access token via TokenRefreshService` appearing only on local explained why GA4 was failing on docker -- the docker image's agent fat-JAR predated the managed-OAuth feature.
-- **`[V2] StageFormatDecision` is the JSONL-vs-CSV triage signal.** When a "dlt source" surprises you with a CSV-side outcome (e.g., `EMPTY_FIELD_AS_NULL` distinct-count diffs on Stripe, GitHub, Shopify, GA4), grep the job log for the per-object decision:
+- **`[V2] StageFormatDecision` is the JSONL-vs-CSV triage signal.** When a dlt source's destination outcome surprises you (e.g. CSV-side `EMPTY_FIELD_AS_NULL` distinct-count diffs, or a CSV validator reporting `SKIP (no source CSV)`), grep the job log for the per-object decision:
   ```bash
   grep '\[V2\] StageFormatDecision' data/tenants/c42614a7-.../jobs/<job-id>/logs/job.log | head
   ```
-  If you see `selected=CSV reason=LEGACY_CSV_RUNTIME_NOT_PYTHON`, the connector's `SPEC.use_full_normalize` is `False` and the JSONL path was never invoked. As of 2026-05-03 only Jira and MongoDB have `use_full_normalize=True`; everything else routes through the legacy CSV path regardless of the four-flag state.
-- **Do NOT pipe per-job validator runs through `tail -N` in batch loops.** A loop like `for jid in $jobs; do python3 validate_snowflake.py --job-id "$jid" | tail -8; done` clips the per-object FAIL/SKIP rows -- you only see the trailing summary line. Either tee the full output to a per-destination log (`... | tee scripts/smoke/.last_<dest>_validate.log`) and grep details from there, or skip the tail and accept the larger output.
+  `selected=JSONL` -> validate via section 5 / 5b (Snowflake) or report the Glue/Postgres gap. `selected=CSV reason=LEGACY_CSV_RUNTIME_NOT_PYTHON` -> this pipeline ran the legacy CSV (Java-runtime) path, so the CSV validators apply. As of 2026-05-16 every dlt Python connector is `use_full_normalize=True` + `jsonl_certified=True`, so for them the format is decided by the four-flag / cert rollout state in the environment, not by a static connector list -- always read the actual `StageFormatDecision` line, do not infer from the connector name.
+- **Do NOT pipe per-job validator runs through `tail -N` in batch loops.** A loop like `for jid in $jobs; do supaflow-platform/scripts/smoke/run.sh validate_snowflake.py --job-id "$jid" | tail -8; done` clips the per-object FAIL/SKIP rows -- you only see the trailing summary line. Either tee the full output to a per-destination log (`... | tee scripts/smoke/.last_<dest>_validate.log`) and grep details from there, or skip the tail and accept the larger output.
 - **`cd` away from `supaflow-platform/` will silently break the next validator call.** The smoke scripts use relative paths (`scripts/smoke/...`, `data/tenants/...`) that resolve from `supaflow-platform/`. After running anything in `supaflow-docker/scripts/` or `supaflow-app/`, either `cd /Users/puneetgupta/supaflow-workspace/supaflow-platform` back, or use absolute paths in subsequent commands. Symptom: `No such file or directory` on a script that was working five minutes ago.
 
 ---
@@ -444,7 +458,7 @@ When reporting smoke test results to the user, use this layout:
 Batch: <destination>
 Jobs submitted: N
 Jobs passed:    M (log verify)
-Data validated: K (destination vs source CSV)
+Data validated: K (destination vs source staging; note JSONL-on-Glue/Postgres full-data gap)
 Supa parity:    P (dlt sources only)
 
 Failures:
