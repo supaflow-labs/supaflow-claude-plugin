@@ -185,7 +185,7 @@ Capture the printed `job_id` from each response and feed them into `verify_smoke
 
 ## 4. Verify jobs (log analysis)
 
-Once a batch completes, run the verifier against **all** job IDs from that destination. It parses local agent logs at `data/tenants/c42614a7-a6a8-4b34-a0ea-83efa6c08a30/jobs/<job-id>/logs/job.log`.
+Once a batch completes, run the verifier against **all** job IDs from that destination. It parses local agent logs at `data/tenants/*/jobs/<job-id>/logs/job.log` (the tenant is resolved from the `job_id`, so any developer's tenant works -- `SMOKE_TENANT_ID` overrides if needed).
 
 ```bash
 supaflow-platform/scripts/smoke/run.sh verify_smoke_jobs.py <job-id-1> <job-id-2> ...
@@ -235,7 +235,7 @@ All validators expect to be run **from `supaflow-platform/`** (their relative pa
 
 > **JSONL pipelines (`StageFormatDecision ... selected=JSONL`).** Whether a pipeline stages `.jsonl` or `.csv` is a per-job runtime decision, NOT a fixed connector property -- **do not rely on a static connector list** (this guidance has drifted before). As of 2026-05-16 every dlt Python connector is `use_full_normalize=True` + `jsonl_certified=True` (Jira, MongoDB, MySQL, Stripe, Shopify, GitHub, GA4), so with the cert flag on in local dev they select JSONL; only legacy/Java-runtime connectors stay CSV. Decide per job from the log, not from memory:
 > ```bash
-> grep '\[V2\] StageFormatDecision' data/tenants/c42614a7-.../jobs/<job-id>/logs/job.log | head
+> grep '\[V2\] StageFormatDecision' data/tenants/*/jobs/<job-id>/logs/job.log | head
 > ```
 > - `selected=JSONL` + **Snowflake** destination: use `validate_snowflake_jsonl.py` (`--datasource <api>` auto-exports the source catalog) -- full source-vs-destination comparison.
 > - `selected=JSONL` + **Glue or Postgres** destination: no **full-data** validator yet -- `validate_glue_*.py` / `validate_postgres.py` are CSV-only and report `SKIP (no source CSV)`, and the section-5b SQL is Snowflake-only. **But `validate_supa_passthrough.py` still applies** -- it reads `.jsonl` staging and supports `--destination glue-iceberg` / `postgres`, so run it for `_supa_id` / `_supa_index` parity. Treat only the missing full-data comparison as a **coverage gap: report it**, and do not count the full-data-validator SKIPs as a pass.
@@ -427,7 +427,7 @@ Watch for these; do not treat them as "unknown" failures:
 - **For docker-vs-local divergence, diff the agent log lines.** The successful run on the local Java agent vs the failed run on docker will surface the missing code path. Example: `[managed-oauth] refreshed OAuth access token via TokenRefreshService` appearing only on local explained why GA4 was failing on docker -- the docker image's agent fat-JAR predated the managed-OAuth feature.
 - **`[V2] StageFormatDecision` is the JSONL-vs-CSV triage signal.** When a dlt source's destination outcome surprises you (e.g. CSV-side `EMPTY_FIELD_AS_NULL` distinct-count diffs, or a CSV validator reporting `SKIP (no source CSV)`), grep the job log for the per-object decision:
   ```bash
-  grep '\[V2\] StageFormatDecision' data/tenants/c42614a7-.../jobs/<job-id>/logs/job.log | head
+  grep '\[V2\] StageFormatDecision' data/tenants/*/jobs/<job-id>/logs/job.log | head
   ```
   `selected=JSONL` -> validate via section 5 / 5b (Snowflake) or report the Glue/Postgres gap. `selected=CSV reason=LEGACY_CSV_RUNTIME_NOT_PYTHON` -> this pipeline ran the legacy CSV (Java-runtime) path, so the CSV validators apply. As of 2026-05-16 every dlt Python connector is `use_full_normalize=True` + `jsonl_certified=True`, so for them the format is decided by the four-flag / cert rollout state in the environment, not by a static connector list -- always read the actual `StageFormatDecision` line, do not infer from the connector name.
 - **Do NOT pipe per-job validator runs through `tail -N` in batch loops.** A loop like `for jid in $jobs; do supaflow-platform/scripts/smoke/run.sh validate_snowflake.py --job-id "$jid" | tail -8; done` clips the per-object FAIL/SKIP rows -- you only see the trailing summary line. Either tee the full output to a per-destination log (`... | tee scripts/smoke/.last_<dest>_validate.log`) and grep details from there, or skip the tail and accept the larger output.
