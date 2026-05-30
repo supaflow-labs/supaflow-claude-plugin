@@ -10,7 +10,7 @@ Register the repo as a marketplace, then install:
 
 ```bash
 claude plugin marketplace add https://github.com/supaflow-labs/supaflow-claude-plugin.git
-claude plugin install supaflow-claude-plugin
+claude plugin install supaflow
 ```
 
 ### Local development (per-session)
@@ -45,6 +45,7 @@ The plugin is organized in three layers:
 | `/delete-pipeline` | Delete a pipeline permanently |
 | `/check-job` | Check job status or latest sync |
 | `/explain-job-failure` | Diagnose a failed job |
+| `/sync-pipeline` | Trigger a sync and poll for completion |
 | `/create-schedule` | Schedule recurring pipeline syncs |
 
 ## Domain Skills
