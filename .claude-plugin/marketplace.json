@@ -9,7 +9,7 @@
   },
   "plugins": [
     {
-      "name": "supaflow-claude-plugin",
+      "name": "supaflow",
       "description": "Official Supaflow (supa-flow.io) plugin for ETL/ELT pipelines, connectors, warehouse syncs, schedules, and job monitoring.",
       "category": "development",
       "source": "./",
