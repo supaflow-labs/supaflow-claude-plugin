@@ -52,14 +52,33 @@ install and no per-session login**.
      these). Put the key in this config file yourself — never via chat.
 3. Restart Claude Desktop. The tools appear as `mcp__supaflow__auth_status`, etc.
 
-## Tools (prototype slice)
+## Tools
 
-- `auth_status` — auth + selected workspace.
-- `datasources_list` — datasources in the active workspace (`limit`, capped 200).
-- `jobs_status` — job status by `job_id`.
+42 tools mirroring the CLI 1:1 (verified against `supaflow-cli/src/commands/*`).
+Each is tagged read-only or write via MCP annotations so Desktop auto-allows
+reads and prompts on writes; deletes are flagged destructive.
 
-(Expand to pipelines / projects / sync / schedules once the round-trip is
-confirmed in Desktop.)
+**Read-only (17):** `auth_status`, `workspaces_list`, `connectors_list`,
+`datasources_list`, `datasources_get`, `datasources_catalog`, `pipelines_list`,
+`pipelines_get`, `pipelines_schema_list`, `projects_list`, `jobs_list`,
+`jobs_status`, `jobs_get`, `jobs_logs`, `schedules_list`, `schedules_history`,
+`docs`.
+
+**Write (25):** `datasources_init/create/edit/test/enable/disable/delete/refresh`,
+`pipelines_init/create/edit/schema_select/schema_add/enable/disable/delete/sync`,
+`projects_create`, `schedules_create/edit/delete/enable/disable/run`,
+`workspaces_select`. (`*_delete` are flagged destructive — the MCP approval
+prompt is the confirmation.)
+
+**Deliberately not exposed:** `auth login` (its `--key` would pass your API key
+through a tool call), `auth logout` (would clear the host auth this relies on),
+`encrypt` (local env-file utility). `datasources get` omits `--output` (it
+writes a credentials env file).
+
+Every data/action tool runs with `--json`; `docs` returns markdown. Tools that
+write files (`*_init` `--output`, `datasources_catalog` `output_file`,
+`pipelines_init` `--output`) write to the **host** filesystem where the server
+runs — pass host paths, and reuse the same path across `catalog` -> `create`.
 
 ## Smoke test (host)
 
