@@ -52,6 +52,17 @@ assert_contains "$additional_ctx" "HARD RULES" "healthy env: additionalContext c
 assert_contains "$additional_ctx" "Available Commands" "healthy env: additionalContext contains commands table"
 assert_contains "$additional_ctx" "Parser Contracts" "healthy env: additionalContext contains parser contracts"
 
+# The setup gate must be injected, and ahead of the entry skill.
+assert_contains "$additional_ctx" "Supaflow Setup Gate" "healthy env: additionalContext contains the setup gate"
+gate_order=$(echo "$output" | python3 -c "
+import json, sys
+c = json.load(sys.stdin)['hookSpecificOutput']['additionalContext']
+ok = ('Supaflow Setup Gate' in c and '# Supaflow Plugin' in c
+      and c.index('Supaflow Setup Gate') < c.index('# Supaflow Plugin'))
+print('before' if ok else 'not_before')
+" 2>/dev/null || echo "err")
+assert_contains "$gate_order" "^before$" "healthy env: setup gate is injected before the entry skill"
+
 assert_not_contains "$output" "\[SETUP\]" "healthy env: no [SETUP] warnings"
 
 # Scenario 2: Missing CLI - supaflow not on PATH

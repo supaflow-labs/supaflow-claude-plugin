@@ -30,6 +30,10 @@ for cmd_file in "$PLUGIN_ROOT/commands"/*.md; do
     for forbidden in "${FORBIDDEN_TOOLS[@]}"; do
         assert_not_contains "$tools_val" "$forbidden" "$cmd_name allowed-tools does not include $forbidden"
     done
+
+    # Safe-channel guardrail: a command must never instruct pasting an API key
+    # into chat. The user runs `supaflow auth login` in their own terminal.
+    assert_file_not_contains "$cmd_file" "auth login --key" "$cmd_name does not leak 'auth login --key' (no API key in chat)"
 done
 
 print_summary

@@ -41,11 +41,13 @@ Credentials stored in `~/.supaflow/config.json` (mode 0600). Environment variabl
 | `SUPAFLOW_API_KEY` | API key (alternative to `supaflow auth login`) |
 | `SUPAFLOW_WORKSPACE_ID` | Workspace UUID (alternative to `supaflow workspaces select`) |
 
-To authenticate:
+To authenticate (the user runs this in their own terminal -- never pass an API key through the agent or chat):
 ```bash
-supaflow auth login --key <api-key>
+supaflow auth login            # prompts for the API key in the user's terminal
 supaflow workspaces select <name-or-uuid>
 ```
+
+> **Agent note:** never log in on the user's behalf with a key pasted into chat. The non-interactive `--key <value>` flag is a local convenience for the user's own terminal only -- not an agent workflow. A secret in the transcript is treated as compromised.
 
 API keys start with `ak_` and are created at https://app.supa-flow.io > Settings > API Keys.
 
