@@ -10,7 +10,7 @@ You are helping the user create a new Supaflow datasource. Follow these steps ex
 
 ## Step 1: Setup Check
 
-Run the auth status check first. If it fails, STOP immediately -- do not proceed.
+**Run the setup gate first** (`skills/using-supaflow/setup-preamble.md`, injected at session start) -- it is BLOCKING and owns all setup policy. This command is tool-restricted (no `npm`), so it cannot install the CLI; if any prerequisite is unmet, STOP and surface the exact fix, and do NOT proceed.
 
 ```bash
 supaflow auth status --json | python3 -c "

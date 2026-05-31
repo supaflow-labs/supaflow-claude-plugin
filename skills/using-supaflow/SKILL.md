@@ -48,6 +48,7 @@ These rules are non-negotiable. Violating any of them is a bug.
 9. **Object scope is a required decision.** Ask whether to sync all objects or a subset. Only omit `--objects` after the user explicitly says to sync all discovered objects.
 10. **Parse JSON with `python3 -c`.** Never dump full JSON output into the conversation.
 11. **In shell loops, never use `status` as a variable name** (read-only in zsh). Use `job_status` or `poll_status`.
+12. **Dependency installs require explicit confirmation** (see the setup gate). Never run `npm install` (or any environment-mutating install/upgrade) silently. Offer it, wait for an explicit yes, then run it. Never auto-install Node. Never paste an API key into chat -- have the user run `supaflow auth login` themselves.
 
 ## Red Flags
 
@@ -104,12 +105,9 @@ If the user's request spans multiple commands (e.g., "build a pipeline", "set up
 
 ## Before Any Supaflow Operation
 
-Every command starts with an auth check. If the CLI is not authenticated or no workspace is selected, stop and tell the user how to fix it:
-- Not installed: `npm install -g @getsupaflow/cli`
-- Not authenticated: `supaflow auth login` (user needs API key from https://app.supa-flow.io > Settings > API Keys)
-- No workspace: `supaflow workspaces select <name>`
+Setup gating is owned by the **setup gate** (`setup-preamble.md`), which the SessionStart hook injects ahead of this skill. Do not restate or fork its policy here.
 
-Do not try to repair setup from inside a restricted command if the command does not have the tools to do so. Explain the blocker and stop.
+Before any datasource / pipeline / job / schedule action, ensure the gate passes: Node >= 18; the Supaflow CLI present and current (offer + confirm before installing -- never silently, never auto-install Node); authenticated (the user runs `supaflow auth login` themselves -- no API key in chat); and a workspace selected. If any check fails, follow the gate: resolve it or hand the user the exact fix, then STOP until it passes. The SessionStart "Setup Issues" list reports which checks are currently failing.
 
 ## Parser Contracts
 

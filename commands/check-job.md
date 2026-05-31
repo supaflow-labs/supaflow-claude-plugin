@@ -10,14 +10,14 @@ Check the status of a specific job by ID, or look up the latest job for a named 
 
 ## Setup Check
 
-Run this first. If it fails, stop and tell the user what to fix before proceeding.
+**Run the setup gate first** (`skills/using-supaflow/setup-preamble.md`, injected at session start) -- it is BLOCKING and owns all setup policy. This command is tool-restricted to `Bash(supaflow *)`, so it cannot install the CLI; if any prerequisite is unmet, STOP and surface the exact fix, and do NOT proceed.
 
 ```bash
 supaflow auth status --json | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
-if not d.get('authenticated'): print('NOT AUTHENTICATED: Run supaflow auth login --key <api-key>'); sys.exit(1)
+if not d.get('authenticated'): print('NOT AUTHENTICATED: run supaflow auth login in your own terminal (do not paste the API key into chat)'); sys.exit(1)
 if not d.get('workspace_id'): print('NO WORKSPACE: Run supaflow workspaces select <name>'); sys.exit(1)
 print('OK: authenticated as workspace ' + str(d.get('workspace_name', d['workspace_id'])))
 "

@@ -1,14 +1,14 @@
 ---
 description: Create a new sync pipeline
 allowed-tools: Bash(supaflow *), Read, Edit, Write
-argument-hint: [source-datasource] [destination-datasource]
+argument-hint: "[source-datasource] [destination-datasource]"
 ---
 
 # Create a Supaflow Pipeline
 
 ## Step 1: Setup Check
 
-Run auth status first. If it fails, STOP immediately -- do not attempt to remediate.
+**Run the setup gate first** (`skills/using-supaflow/setup-preamble.md`, injected at session start) -- it is BLOCKING and owns all setup policy. This command is tool-restricted (no `npm`), so it cannot install the CLI; if any prerequisite is unmet, STOP and surface the exact fix, and do NOT proceed.
 
 ```bash
 supaflow auth status --json | python3 -c "
