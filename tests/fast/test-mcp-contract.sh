@@ -14,6 +14,8 @@ import {
   buildSupaflowArgv,
   listToolDefinitions,
   normalizeObjectPreviewLimit,
+  validatePlanBinding,
+  validatePlanWorkspace,
 } from "./servers/supaflow-mcp/server.mjs";
 
 const names = TOOLS.map((t) => t.name);
@@ -96,6 +98,37 @@ try {
   unknownObjectBlocked = true;
 }
 emit("unknown_object_blocked", unknownObjectBlocked);
+
+const boundPlan = {
+  workspace: { id: "ws_1" },
+  resolved: {
+    source: { id: "src_1" },
+    project: { id: "proj_1" },
+  },
+};
+emit("plan_binding_ok", validatePlanBinding(boundPlan, {
+  workspace: { id: "ws_1" },
+  source: { id: "src_1" },
+  project: { id: "proj_1" },
+}));
+let workspaceMismatchBlocked = false;
+try {
+  validatePlanWorkspace(boundPlan, { id: "ws_2" });
+} catch {
+  workspaceMismatchBlocked = true;
+}
+emit("workspace_mismatch_blocked", workspaceMismatchBlocked);
+let legacyPlanBlocked = false;
+try {
+  validatePlanBinding({ schema_version: 1, source: "src", project: "proj" }, {
+    workspace: { id: "ws_1" },
+    source: { id: "src_1" },
+    project: { id: "proj_1" },
+  });
+} catch {
+  legacyPlanBlocked = true;
+}
+emit("legacy_plan_blocked", legacyPlanBlocked);
 NODE
 )
 
@@ -146,5 +179,11 @@ assert_contains "$facts" "^object_subset_selection=public.accounts:false,public.
   "mcp: subset object selection keeps only included objects"
 assert_contains "$facts" "^unknown_object_blocked=true$" \
   "mcp: subset object selection rejects unknown objects"
+assert_contains "$facts" "^plan_binding_ok=true$" \
+  "mcp: prepared plan binding accepts matching workspace/source/project ids"
+assert_contains "$facts" "^workspace_mismatch_blocked=true$" \
+  "mcp: prepared plan binding blocks workspace changes"
+assert_contains "$facts" "^legacy_plan_blocked=true$" \
+  "mcp: prepared plan binding rejects unbound legacy plans"
 
 print_summary

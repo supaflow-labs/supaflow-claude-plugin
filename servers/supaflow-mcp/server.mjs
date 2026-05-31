@@ -119,10 +119,109 @@ function configSummary(config) {
   };
 }
 
+function safeDatasourceIdentity(ds) {
+  return {
+    id: ds?.id || "",
+    api_name: ds?.api_name || "",
+    name: ds?.name || "",
+    state: ds?.state || "",
+    connector_name: ds?.connector_name || "",
+    connector_type: ds?.connector_type || "",
+    workspace_id: ds?.workspace_id || "",
+  };
+}
+
+function safeProjectIdentity(project) {
+  return {
+    id: project?.id || "",
+    api_name: project?.api_name || "",
+    name: project?.name || "",
+    state: project?.state || "",
+    warehouse_datasource_id: project?.warehouse_datasource_id || "",
+    warehouse_name: project?.warehouse_name || "",
+    warehouse_connector_name: project?.warehouse_connector_name || "",
+  };
+}
+
+async function getCurrentWorkspace() {
+  const status = parseCliJson(await execSupaflowArgv(["auth", "status", "--json"], 60000), "auth status");
+  if (status.authenticated !== true) {
+    throw new Error("Supaflow CLI is not authenticated. Run supaflow auth login in your own terminal.");
+  }
+  if (!status.workspace_id) {
+    throw new Error("No Supaflow workspace is selected. Run supaflow workspaces select in your own terminal.");
+  }
+  return {
+    id: status.workspace_id,
+    name: status.workspace_name || "",
+  };
+}
+
+async function resolveDatasourceIdentity(identifier) {
+  const ds = parseCliJson(await execSupaflowArgv(["datasources", "get", identifier, "--json"], 120000), "datasources get");
+  const identity = safeDatasourceIdentity(ds);
+  if (!identity.id) {
+    throw new Error(`Datasource "${identifier}" did not resolve to an id.`);
+  }
+  return identity;
+}
+
+async function resolveProjectIdentity(identifier) {
+  const projects = parseCliJson(await execSupaflowArgv(["projects", "list", "--json"], 120000), "projects list");
+  const rows = Array.isArray(projects?.data) ? projects.data : [];
+  const project = rows.find((p) => p?.id === identifier || p?.api_name === identifier);
+  if (!project) {
+    throw new Error(`Project "${identifier}" not found in the active workspace.`);
+  }
+  const identity = safeProjectIdentity(project);
+  if (!identity.id) {
+    throw new Error(`Project "${identifier}" did not resolve to an id.`);
+  }
+  if (!identity.warehouse_datasource_id) {
+    throw new Error(`Project "${identity.name || identifier}" has no destination datasource configured.`);
+  }
+  return identity;
+}
+
 export function normalizeObjectPreviewLimit(value) {
   const parsed = Number.parseInt(String(value ?? DEFAULT_OBJECT_PREVIEW_LIMIT), 10);
   const limit = Number.isNaN(parsed) ? DEFAULT_OBJECT_PREVIEW_LIMIT : parsed;
   return Math.min(Math.max(limit, 1), MAX_OBJECT_PREVIEW_LIMIT);
+}
+
+export function validatePlanBinding(plan, current) {
+  const expectedWorkspaceId = plan?.workspace?.id;
+  const expectedSourceId = plan?.resolved?.source?.id;
+  const expectedProjectId = plan?.resolved?.project?.id;
+
+  if (!expectedWorkspaceId || !expectedSourceId || !expectedProjectId) {
+    throw new Error("Prepared pipeline plan is missing workspace/source/project bindings. Re-run pipelines_prepare_create.");
+  }
+  validatePlanWorkspace(plan, current?.workspace);
+  if (current?.source?.id !== expectedSourceId) {
+    throw new Error(
+      `Source datasource changed since prepare: expected ${expectedSourceId}, got ${current?.source?.id || "none"}. Re-run pipelines_prepare_create.`,
+    );
+  }
+  if (current?.project?.id !== expectedProjectId) {
+    throw new Error(
+      `Project changed since prepare: expected ${expectedProjectId}, got ${current?.project?.id || "none"}. Re-run pipelines_prepare_create.`,
+    );
+  }
+  return true;
+}
+
+export function validatePlanWorkspace(plan, currentWorkspace) {
+  const expectedWorkspaceId = plan?.workspace?.id;
+  if (!expectedWorkspaceId || !plan?.resolved?.source?.id || !plan?.resolved?.project?.id) {
+    throw new Error("Prepared pipeline plan is missing workspace/source/project bindings. Re-run pipelines_prepare_create.");
+  }
+  if (currentWorkspace?.id !== expectedWorkspaceId) {
+    throw new Error(
+      `Active workspace changed since prepare: expected ${expectedWorkspaceId}, got ${currentWorkspace?.id || "none"}. Re-run pipelines_prepare_create in the target workspace.`,
+    );
+  }
+  return true;
 }
 
 export function applyConfigPatch(baseConfig, patch = {}) {
@@ -224,8 +323,15 @@ const pipelinePrepareCreateOutputSchema = {
   properties: {
     plan_id: { type: "string" },
     plan_dir: { type: "string" },
+    workspace_id: { type: "string" },
+    workspace_name: { type: "string" },
     source: { type: "string" },
+    source_id: { type: "string" },
+    source_api_name: { type: "string" },
     project: { type: "string" },
+    project_id: { type: "string" },
+    project_api_name: { type: "string" },
+    destination_id: { type: "string" },
     source_name: { type: "string" },
     source_type: { type: "string" },
     destination_name: { type: "string" },
@@ -241,8 +347,15 @@ const pipelinePrepareCreateOutputSchema = {
   required: [
     "plan_id",
     "plan_dir",
+    "workspace_id",
+    "workspace_name",
     "source",
+    "source_id",
+    "source_api_name",
     "project",
+    "project_id",
+    "project_api_name",
+    "destination_id",
     "source_name",
     "source_type",
     "destination_name",
@@ -980,14 +1093,17 @@ async function preparePipelineCreate(args) {
   const planId = crypto.randomUUID();
   const paths = planPaths(planId);
   fs.mkdirSync(paths.dir, { recursive: true, mode: 0o700 });
+  const workspace = await getCurrentWorkspace();
+  const sourceIdentity = await resolveDatasourceIdentity(args.source);
+  const projectIdentity = await resolveProjectIdentity(args.project);
 
   const initArgv = [
     "pipelines",
     "init",
     "--source",
-    args.source,
+    sourceIdentity.id,
     "--project",
-    args.project,
+    projectIdentity.id,
     "--output",
     paths.configFile,
     "--json",
@@ -995,7 +1111,7 @@ async function preparePipelineCreate(args) {
   const init = parseCliJson(await execSupaflowArgv(initArgv, 120000), "pipelines init");
   const config = init.config || parseJson(fs.readFileSync(paths.configFile, "utf8"), "pipeline config");
 
-  const catalogArgv = ["datasources", "catalog", args.source, "--output", paths.objectsFile];
+  const catalogArgv = ["datasources", "catalog", sourceIdentity.id, "--output", paths.objectsFile];
   if (args.refresh_catalog === true) catalogArgv.push("--refresh");
   catalogArgv.push("--json");
   const catalog = parseCliJson(await execSupaflowArgv(catalogArgv, 240000), "datasources catalog");
@@ -1014,10 +1130,24 @@ async function preparePipelineCreate(args) {
   }
 
   const plan = {
-    schema_version: 1,
+    schema_version: 2,
     created_at: new Date().toISOString(),
-    source: args.source,
-    project: args.project,
+    requested: {
+      source: args.source,
+      project: args.project,
+    },
+    workspace,
+    source: sourceIdentity.api_name || sourceIdentity.id,
+    project: projectIdentity.api_name || projectIdentity.id,
+    resolved: {
+      source: sourceIdentity,
+      project: projectIdentity,
+      destination: {
+        id: projectIdentity.warehouse_datasource_id,
+        name: projectIdentity.warehouse_name,
+        connector_name: projectIdentity.warehouse_connector_name,
+      },
+    },
     init,
     catalog,
     config,
@@ -1033,8 +1163,15 @@ async function preparePipelineCreate(args) {
   const structuredContent = {
     plan_id: planId,
     plan_dir: paths.dir,
-    source: args.source,
-    project: args.project,
+    workspace_id: workspace.id,
+    workspace_name: workspace.name,
+    source: sourceIdentity.api_name || sourceIdentity.id,
+    source_id: sourceIdentity.id,
+    source_api_name: sourceIdentity.api_name,
+    project: projectIdentity.api_name || projectIdentity.id,
+    project_id: projectIdentity.id,
+    project_api_name: projectIdentity.api_name,
+    destination_id: projectIdentity.warehouse_datasource_id,
     source_name: init.source || "",
     source_type: init.source_type || "",
     destination_name: init.destination || "",
@@ -1065,6 +1202,15 @@ async function createPipelineFromPlan(args) {
   }
 
   const { paths, plan } = loadPlan(args.plan_id);
+  const currentWorkspace = await getCurrentWorkspace();
+  validatePlanWorkspace(plan, currentWorkspace);
+  const currentSource = await resolveDatasourceIdentity(plan.resolved.source.id);
+  const currentProject = await resolveProjectIdentity(plan.resolved.project.id);
+  validatePlanBinding(plan, {
+    workspace: currentWorkspace,
+    source: currentSource,
+    project: currentProject,
+  });
   const baseConfig = plan.config || parseJson(fs.readFileSync(paths.configFile, "utf8"), "pipeline config");
   const finalConfig = applyConfigPatch(baseConfig, args.config_patch || {});
   fs.writeFileSync(paths.configFile, JSON.stringify(finalConfig, null, 2) + "\n", "utf8");
@@ -1079,8 +1225,8 @@ async function createPipelineFromPlan(args) {
   const createArgv = buildPipelineCreateFromPlanArgv({
     name: args.name,
     description: args.description,
-    source: plan.source,
-    project: plan.project,
+    source: plan.resolved.source.id,
+    project: plan.resolved.project.id,
     configFile: paths.configFile,
     objectsFile: paths.selectedObjectsFile,
   });
