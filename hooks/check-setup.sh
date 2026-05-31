@@ -19,7 +19,8 @@ MIN_CLI_VERSION="0.1.12"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# --- Read using-supaflow skill content ---
+# --- Read setup gate + using-supaflow skill content (gate first) ---
+setup_preamble_content=$(cat "$PLUGIN_ROOT/skills/using-supaflow/setup-preamble.md" 2>/dev/null || echo "Error reading setup-preamble")
 using_supaflow_content=$(cat "$PLUGIN_ROOT/skills/using-supaflow/SKILL.md" 2>/dev/null || echo "Error reading using-supaflow skill")
 
 # --- Setup checks ---
@@ -27,44 +28,46 @@ warnings=()
 
 # 1. Check Node.js
 if ! command -v node &>/dev/null; then
-  warnings+=("[SETUP] Node.js is not installed. Install Node.js 18+ first (brew install node on macOS, or see https://nodejs.org).")
+  warnings+=("[SETUP] Node.js is not installed (need v18+). Resolve via the setup gate above before proceeding.")
 else
   node_major=$(node --version 2>/dev/null | sed 's/v\([0-9]*\).*/\1/')
   if [ "${node_major:-0}" -lt 18 ]; then
-    warnings+=("[SETUP] Node.js $(node --version) is too old. Upgrade to v18 or later.")
+    warnings+=("[SETUP] Node.js $(node --version) is too old (need v18+). Resolve via the setup gate above before proceeding.")
   fi
 fi
 
 # 2. Check supaflow CLI
 if ! command -v supaflow &>/dev/null; then
-  warnings+=("[SETUP] The Supaflow CLI is not installed. Run: npm install -g @getsupaflow/cli")
+  warnings+=("[SETUP] The Supaflow CLI is not installed. Resolve via the setup gate above (offer to install, run only on confirmation) before proceeding.")
 else
   cli_version=$(supaflow --version 2>/dev/null || echo "0.0.0")
   if [ "$(printf '%s\n' "$MIN_CLI_VERSION" "$cli_version" | sort -V | head -n1)" != "$MIN_CLI_VERSION" ]; then
-    warnings+=("[SETUP] The Supaflow CLI v${cli_version} is outdated. This plugin requires v${MIN_CLI_VERSION}+. Run: npm install -g @getsupaflow/cli")
+    warnings+=("[SETUP] The Supaflow CLI v${cli_version} is outdated (requires v${MIN_CLI_VERSION}+). Resolve via the setup gate above (offer to upgrade, run only on confirmation) before proceeding.")
   fi
 
   # 3. Check auth and workspace
   auth_output=$(supaflow auth status --json 2>/dev/null || echo '{}')
   authenticated=$(echo "$auth_output" | grep -o '"authenticated"[[:space:]]*:[[:space:]]*true' || true)
   if [ -z "$authenticated" ]; then
-    warnings+=("[SETUP] The Supaflow CLI is not authenticated. The user needs an API key from https://app.supa-flow.io > Settings > API Keys, then run: supaflow auth login")
+    warnings+=("[SETUP] The Supaflow CLI is not authenticated. Resolve via the setup gate above (user runs 'supaflow auth login' themselves; no API key in chat) before proceeding.")
   else
     workspace_id=$(echo "$auth_output" | grep -o '"workspace_id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/' || true)
     if [ -z "$workspace_id" ] || [ "$workspace_id" = "null" ]; then
-      warnings+=("[SETUP] No workspace selected. Run: supaflow workspaces select <name>")
+      warnings+=("[SETUP] No workspace selected. Resolve via the setup gate above (run: supaflow workspaces select <name>) before proceeding.")
     fi
   fi
 fi
 
-# --- Build context ---
-context="$using_supaflow_content"
+# --- Build context (setup gate first, then the entry skill) ---
+context="${setup_preamble_content}
+
+${using_supaflow_content}"
 if [ ${#warnings[@]} -gt 0 ]; then
   context="${context}
 
-## Setup Issues
+## Setup Issues (detected this session)
 
-Fix these before proceeding with any Supaflow operations:"
+Resolve each via the setup gate above before any Supaflow operation:"
   for w in "${warnings[@]}"; do
     context="${context}
 ${w}"
