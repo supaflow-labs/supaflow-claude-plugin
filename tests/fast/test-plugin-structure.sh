@@ -49,4 +49,12 @@ done
 assert_contains "$([ -f "$PLUGIN_ROOT/skills/using-supaflow/cli-reference.md" ] && echo 'exists' || echo 'missing')" \
     "exists" "skills/using-supaflow/cli-reference.md exists"
 
+# Check using-supaflow has the MCP safe executor supporting file
+assert_contains "$([ -f "$PLUGIN_ROOT/skills/using-supaflow/mcp-safe-executor.md" ] && echo 'exists' || echo 'missing')" \
+    "exists" "skills/using-supaflow/mcp-safe-executor.md exists"
+
+# Check using-supaflow has the MCP workflow supporting file
+assert_contains "$([ -f "$PLUGIN_ROOT/skills/using-supaflow/mcp-workflows.md" ] && echo 'exists' || echo 'missing')" \
+    "exists" "skills/using-supaflow/mcp-workflows.md exists"
+
 print_summary

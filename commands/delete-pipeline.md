@@ -64,9 +64,9 @@ Also show the number of selected objects:
 
 ```bash
 supaflow pipelines schema list <pipeline-api-name> --json | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-if 'error' in d: print(d['error']['message']); sys.exit(1)
-selected = sum(1 for o in d['data'] if o['selected'])
+import sys,json; objs=json.load(sys.stdin)
+if isinstance(objs, dict) and 'error' in objs: print(objs['error']['message']); sys.exit(1)
+selected = sum(1 for o in objs if o['selected'])
 print(f\"Selected objects: {selected}\")
 "
 ```

@@ -68,7 +68,7 @@ Parse the create response to get the new project's `api_name`.
 
 **MANDATORY before creating.** Duplicate pipelines writing to the same destination schema cause data corruption.
 
-This step MUST scan all pipelines, not just the first page. The CLI caps `--limit` at 200, so page until exhausted:
+This step MUST scan all pipelines, not just the first page. The CLI caps `--limit` at 200, so page until exhausted. The equivalent CLI command is `supaflow pipelines list --limit 200 --offset <n> --json`.
 
 ```bash
 python3 -c "

@@ -1,0 +1,16 @@
+{
+  "name": "@getsupaflow/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local stdio MCP server that exposes the Supaflow CLI as mcp__supaflow__* tools.",
+  "type": "module",
+  "bin": {
+    "supaflow-mcp": "server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

@@ -1,6 +1,6 @@
 # Supaflow Plugin for Claude Code
 
-Official Claude Code plugin for [Supaflow](https://www.supa-flow.io), the unified data movement platform. Manage datasources, pipelines, schedules, and job monitoring through natural language backed by the `@getsupaflow/cli`.
+Official Claude Code plugin for [Supaflow](https://www.supa-flow.io), the unified data movement platform. Manage datasources, pipelines, schedules, and job monitoring through natural language backed by the host-side Supaflow MCP server in Claude Desktop, or by the `@getsupaflow/cli` in terminal Claude Code.
 
 ## Install
 
@@ -26,11 +26,13 @@ claude --plugin-dir ./supaflow-claude-plugin
 
 ## Architecture
 
-The plugin is organized in three layers:
+The plugin is organized in four layers:
 
-**`using-supaflow` skill** - Injected at session start. Establishes session policy, tool restrictions, and routes incoming requests to the correct command or domain skill.
+**`using-supaflow` skill** - Injected at session start. Establishes the setup gate, chooses Desktop MCP vs terminal CLI, and routes incoming requests to the correct workflow or domain skill.
 
-**Commands** - Execution layer. Each command maps to one user-facing workflow, enforces guardrails (e.g., blocks destructive actions in activation pipelines), and restricts which tools may run.
+**Desktop MCP server** - Prototype host-side stdio server in `servers/supaflow-mcp/`. It exposes `mcp__supaflow__*` tools by shelling out to the host `supaflow` CLI, so Claude Desktop can use the host CLI and `~/.supaflow/config.json` instead of the cowork VM. Guided tools return structured JSON and keep host-side temp files inside MCP.
+
+**Commands** - Terminal CLI execution layer and workflow specs. Each command maps to one user-facing workflow and preserves tested guardrails for confirmations, parser contracts, and destructive actions.
 
 **Domain skills** - Reference material. Loaded on demand to supply connector properties, config schemas, log patterns, and cron syntax without polluting the base context.
 
@@ -61,14 +63,20 @@ Domain skills are loaded automatically when a command needs them. They are not i
 
 ## Setup
 
-On first session after install, the plugin verifies:
+### Claude Desktop
+
+Desktop usage should use the host-side stdio MCP server. See `servers/supaflow-mcp/README.md`. Register it in `claude_desktop_config.json`; do not use plugin `.mcp.json` for Desktop because that runs inside the cowork VM.
+
+### Terminal Claude Code
+
+When MCP tools are not available, the plugin falls back to CLI checks. On first session after install, the plugin verifies:
 
 - Node.js 18+ is installed
 - Supaflow CLI v0.1.12+ is installed (`npm install -g @getsupaflow/cli`)
 - CLI is authenticated with a valid API key (`supaflow auth login`)
 - A workspace is selected (`supaflow workspaces select`)
 
-If anything is missing, Claude will guide you through the setup. An API key can be generated at `https://app.supa-flow.io` under Settings > API Keys.
+If anything is missing, Claude will guide you through the setup. The user runs `supaflow auth login` in their own terminal; API keys must not be pasted into chat. An API key can be generated at `https://app.supa-flow.io` under Settings > API Keys.
 
 ## Testing
 

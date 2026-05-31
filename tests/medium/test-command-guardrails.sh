@@ -72,6 +72,7 @@ echo ""
 echo "-- delete-pipeline.md --"
 F="$COMMANDS/delete-pipeline.md"
 assert_file_contains "$F" "explicit confirmation" "delete-pipeline: contains explicit confirmation language"
+assert_file_contains "$F" "isinstance(objs, dict).*'error'" "delete-pipeline: treats schema list as raw array"
 echo ""
 
 # --- create-schedule.md ---
