@@ -1,16 +1,16 @@
 ---
 name: using-supaflow
-description: Supaflow CLI command-first workflow for pipelines, syncs, and jobs
+description: Supaflow MCP/CLI workflow gate for pipelines, syncs, jobs, datasources, and schedules
 ---
 
 # Supaflow Plugin
 
-You have the Supaflow plugin installed. It provides commands for managing datasources, pipelines, jobs, and schedules via the Supaflow CLI.
+You have the Supaflow plugin installed. It provides deterministic workflows for managing datasources, pipelines, jobs, and schedules. In Claude Desktop, the authoritative execution surface is the host-side Supaflow MCP server. In terminal Claude Code, the fallback execution surface is the Supaflow CLI slash-command workflow.
 
 <EXTREMELY-IMPORTANT>
-If you think there is even a 1% chance a Supaflow command applies to what the user is asking, you ABSOLUTELY MUST use that command.
+If `mcp__supaflow__auth_status` is available, you ABSOLUTELY MUST use the Supaflow MCP path for Supaflow operations.
 
-IF A COMMAND COVERS THE TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+If MCP is not available and a Supaflow slash command covers the task, you ABSOLUTELY MUST use that command.
 
 This is not negotiable. This is not optional. You cannot rationalize your way out of this by saying the task is simple, exploratory, or just needs one quick check.
 </EXTREMELY-IMPORTANT>
@@ -23,49 +23,56 @@ Supaflow skills and commands override default assistant behavior, but user instr
 2. **Supaflow skills and commands** -- override default assistant behavior where they conflict
 3. **Default system behavior** -- lowest priority
 
-If the user explicitly asks you not to use a command, follow the user. Otherwise, use the command.
+If the user explicitly asks you not to use MCP or a command, follow the user. Otherwise, use the active Supaflow workflow.
 
 ## Using Supaflow Commands and Skills
 
 ## The Rule
 
-**Invoke the relevant Supaflow command BEFORE any response or action.** This includes clarifying questions. If a command exists for the task, start there rather than improvising the workflow in chat.
+**Run the setup gate BEFORE any response or action that touches Supaflow.** The setup gate chooses the execution surface.
 
-If no command exists, use the relevant Supaflow reference skill for domain knowledge and keep the workflow lightweight and explicit.
+- Desktop MCP path: use `mcp__supaflow__*` tools and the MCP workflow specs. MCP workflows are authoritative when they intentionally differ from slash-command wording.
+- Terminal CLI path: invoke the relevant slash command before improvising the workflow in chat.
+- If no MCP tool or command exists, use the relevant Supaflow reference skill for domain knowledge and keep the workflow lightweight and explicit.
 
 ## HARD RULES
 
 These rules are non-negotiable. Violating any of them is a bug.
 
-1. **Use commands when they exist.** If a command covers the user's request, invoke it. Do not recreate the same workflow freehand in chat.
-2. **Ask one question at a time.** Never batch multiple blocking questions into one message.
-3. **Do not infer approval from a partial answer.** If the user changes one field, that is not approval for the rest.
-4. **Do not create before explicit confirmation.** Pipelines, datasources, schedules: show the user what you are about to create and wait for explicit approval.
-5. **Do not guess CLI output fields.** Use only documented field names. If you are unsure, run the command with `--json` and inspect the actual output shape.
-6. **Do not ask for passwords or secrets in chat.** Tell the user to edit the env file directly.
-7. **Stop on errors.** If a create/edit command fails, show the error verbatim and ask the user what to do. Never silently retry, rename, auto-increment, or "fix" the input without approval.
-8. **Always run `pipelines init` before `pipelines create`.** Present actual config values from the generated file and wait for explicit confirmation.
-9. **Object scope is a required decision.** Ask whether to sync all objects or a subset. Only omit `--objects` after the user explicitly says to sync all discovered objects.
-10. **Parse JSON with `python3 -c`.** Never dump full JSON output into the conversation.
-11. **In shell loops, never use `status` as a variable name** (read-only in zsh). Use `job_status` or `poll_status`.
-12. **Dependency installs require explicit confirmation** (see the setup gate). Never run `npm install` (or any environment-mutating install/upgrade) silently. Offer it, wait for an explicit yes, then run it. Never auto-install Node. Never paste an API key into chat -- have the user run `supaflow auth login` themselves.
+1. **Prefer MCP when it exists.** If `mcp__supaflow__auth_status` is available, use MCP tools for Supaflow operations and do not fall back to `Bash(supaflow *)`.
+2. **Use commands when MCP is absent and commands exist.** If a command covers the user's request in a terminal CLI session, invoke it. Do not recreate the same workflow freehand in chat.
+3. **Ask one question at a time.** Never batch multiple blocking questions into one message.
+4. **Do not infer approval from a partial answer.** If the user changes one field, that is not approval for the rest.
+5. **Do not create before explicit confirmation.** Pipelines, datasources, schedules: show the user what you are about to create and wait for explicit approval. MCP approval prompts are not a substitute for this confirmation.
+6. **Do not guess output fields.** Use only documented field names. If you are unsure, inspect the real MCP/CLI JSON output shape.
+7. **Do not ask for passwords or secrets in chat.** Tell the user to edit the env file directly.
+8. **Stop on errors.** If a create/edit command or MCP tool fails, show the error verbatim and ask the user what to do. Never silently retry, rename, auto-increment, or "fix" the input without approval.
+9. **Always run the init-equivalent before create.** In Desktop MCP mode, use `pipelines_prepare_create` before `pipelines_create_from_plan`. In CLI fallback mode, run `pipelines init` before `pipelines create`. Present actual config values from the generated result/file and wait for explicit confirmation.
+10. **Object scope is a required decision.** Ask whether to sync all objects or a subset. In guided MCP mode, pass `object_selection: { "mode": "all" }` for all objects; the MCP wrapper still passes the prepared object file internally. In raw CLI fallback mode, only omit `--objects` after the user explicitly says to sync all discovered objects.
+11. **Parse JSON deliberately.** For CLI commands, parse JSON with `python3 -c`. For MCP tools, parse the returned JSON text and use the same field contracts. Never dump full JSON output into the conversation.
+12. **In shell loops, never use `status` as a variable name** (read-only in zsh). Use `job_status` or `poll_status`.
+13. **Read `mcp-safe-executor.md` before any non-read-only MCP tool.** Follow its read-confirm-call-verify sequence.
+14. **Never paste credential material.** Do not quote datasource `configs`, encrypted secret blobs, env file contents, passwords, tokens, API keys, or credential-shaped values. Summarize only safe identifiers and capability fields.
+15. **Dependency installs require explicit confirmation** (see the setup gate). Never run `npm install` (or any environment-mutating install/upgrade) silently. Offer it, wait for an explicit yes, then run it. Never auto-install Node. Never paste an API key into chat -- have the user run `supaflow auth login` themselves.
 
 ## Red Flags
 
-These thoughts mean STOP. You are rationalizing your way out of the command-first workflow.
+These thoughts mean STOP. You are rationalizing your way out of the active Supaflow workflow.
 
 | Thought | Reality |
 |---|---|
-| "This is just a simple pipeline setup" | Simple Supaflow tasks still need the command guardrails. |
-| "I need to ask a few questions first" | If a command exists, use it before freeform clarifying. |
-| "Let me inspect the CLI output quickly from memory" | Run the command with `--json` and inspect the real shape. |
+| "This is just a simple pipeline setup" | Simple Supaflow tasks still need the MCP/command guardrails. |
+| "I need to ask a few questions first" | Run the setup gate and use the active workflow before freeform clarifying. |
+| "Let me inspect the output quickly from memory" | Use MCP/CLI JSON and inspect the real shape. |
 | "I can probably use the defaults" | Use `pipelines init`, read the generated file, and show actual values. |
 | "The user only changed one field, so the rest is fine" | Partial edits are not approval. Re-show the full final config. |
 | "I can retry with a different name/prefix" | Silent retries are a bug. Stop and ask. |
 | "I already know the job fields" | The CLI contract is the source of truth, not memory. |
-| "This doesn't need a command" | If a command exists, use it. |
+| "This doesn't need a command or MCP tool" | If a Supaflow workflow exists, use it. |
 | "I'll just sync all objects by default" | Object scope is a required question. Ask first. |
-| "I can trigger the sync with a quick CLI call" | Use /sync-pipeline. It has the correct response parser and polling contract. |
+| "I can trigger the sync with a quick tool call" | Use the sync workflow. It has the correct response parser and polling contract. |
+| "MCP asked for approval, so that is enough" | MCP approval is tool approval only. It is not workflow confirmation. |
+| "The datasource JSON is read-only, so I can paste it" | Datasource details can include encrypted secrets. Redact configs and credential-shaped values. |
 
 ## Conversation Discipline
 
@@ -80,7 +87,7 @@ These rules apply to every Supaflow workflow:
 
 ## Available Commands
 
-Use these commands for the corresponding user intents. Commands have tool restrictions and embedded guardrails that prevent common mistakes.
+Use these commands for the corresponding user intents. In the terminal CLI path, invoke the command. In the Desktop MCP path, use MCP workflow specs first; command files are fallback/reference material only where the MCP workflow explicitly points to them.
 
 | User wants to... | Command |
 |---|---|
@@ -103,11 +110,17 @@ If the user's request spans multiple commands (e.g., "build a pipeline", "set up
 
 **Do NOT start with `/create-datasource` when the user asks to "build a pipeline."** The user's intent is pipeline creation, not datasource creation. `/create-pipeline` handles datasource discovery internally.
 
+## MCP Tool Safety
+
+For Desktop MCP workflows, read `mcp-safe-executor.md` before calling any non-read-only `mcp__supaflow__*` tool. If a CLI workflow step depends on editing a host-side file generated by MCP and no dedicated MCP tool can perform that exact edit, STOP and ask the user to edit the file on the host or switch to a terminal CLI session. Do not pretend cowork-VM file tools can edit host MCP files.
+
+For Desktop MCP job workflows and guided pipeline creation, read `mcp-workflows.md` and follow its exact resolution, confirmation, and parser rules.
+
 ## Before Any Supaflow Operation
 
 Setup gating is owned by the **setup gate** (`setup-preamble.md`), which the SessionStart hook injects ahead of this skill. Do not restate or fork its policy here.
 
-Before any datasource / pipeline / job / schedule action, ensure the gate passes: Node >= 18; the Supaflow CLI present and current (offer + confirm before installing -- never silently, never auto-install Node); authenticated (the user runs `supaflow auth login` themselves -- no API key in chat); and a workspace selected. If any check fails, follow the gate: resolve it or hand the user the exact fix, then STOP until it passes. The SessionStart "Setup Issues" list reports which checks are currently failing.
+Before any datasource / pipeline / job / schedule action, ensure the active gate passes. If MCP is available, verify via `mcp__supaflow__auth_status` and use MCP. If MCP is absent, use the CLI gate: Node >= 18; the Supaflow CLI present and current (offer + confirm before installing -- never silently, never auto-install Node); authenticated (the user runs `supaflow auth login` themselves -- no API key in chat); and a workspace selected. If any check fails, follow the gate: resolve it or hand the user the exact fix, then STOP until it passes. The SessionStart "CLI Path Setup Issues" list reports CLI fallback checks only.
 
 ## Parser Contracts
 
@@ -120,7 +133,7 @@ These are the correct JSON field names for each CLI output. Never invent alterna
 - NEVER use: `duration`, `completed_at`, `objects`, `rows_read`
 
 **`pipelines list --json` / `datasources list --json`:** wraps results in `{ "data": [...], "total": N, "limit": N, "offset": N }`
-- Default limit is 25. **Always use `--limit 200`** to avoid silently missing items. The CLI hard-caps at 200.
+- Default limit is 25. **Use limit 200** for broad scans to avoid silently missing items. The pipelines list command caps at 200; do not rely on a datasource cap.
 - Always check `total > len(data)` and warn the user about truncation.
 - **For exhaustive scans** (duplicate checks, deletion verification): page with `--offset` until `len(batch) < limit`. A single page is NOT authoritative.
 - **For single-item lookups**: prefer `pipelines get <identifier>` or `datasources get <identifier>` which resolve directly without pagination.

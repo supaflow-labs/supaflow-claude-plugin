@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # SessionStart hook: inject using-supaflow skill content into Claude's
-# system context, plus setup warnings if CLI is not properly configured.
+# system context, plus CLI-path setup warnings if CLI is not properly configured.
 
 # Ensure Homebrew is on PATH for this script's own checks.
 # Claude Code Desktop runs hooks with a minimal PATH (/usr/bin:/bin:/usr/sbin:/sbin).
@@ -23,37 +23,40 @@ PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 setup_preamble_content=$(cat "$PLUGIN_ROOT/skills/using-supaflow/setup-preamble.md" 2>/dev/null || echo "Error reading setup-preamble")
 using_supaflow_content=$(cat "$PLUGIN_ROOT/skills/using-supaflow/SKILL.md" 2>/dev/null || echo "Error reading using-supaflow skill")
 
-# --- Setup checks ---
+# --- CLI-path setup checks ---
+# The hook cannot see Claude Desktop's active MCP tools. These warnings apply to
+# the terminal CLI fallback path; the injected setup gate chooses MCP first when
+# mcp__supaflow__auth_status is available.
 warnings=()
 
 # 1. Check Node.js
 if ! command -v node &>/dev/null; then
-  warnings+=("[SETUP] Node.js is not installed (need v18+). Resolve via the setup gate above before proceeding.")
+  warnings+=("[SETUP:CLI] Node.js is not installed (need v18+). Resolve via the CLI gate above before using the terminal CLI path.")
 else
   node_major=$(node --version 2>/dev/null | sed 's/v\([0-9]*\).*/\1/')
   if [ "${node_major:-0}" -lt 18 ]; then
-    warnings+=("[SETUP] Node.js $(node --version) is too old (need v18+). Resolve via the setup gate above before proceeding.")
+    warnings+=("[SETUP:CLI] Node.js $(node --version) is too old (need v18+). Resolve via the CLI gate above before using the terminal CLI path.")
   fi
 fi
 
 # 2. Check supaflow CLI
 if ! command -v supaflow &>/dev/null; then
-  warnings+=("[SETUP] The Supaflow CLI is not installed. Resolve via the setup gate above (offer to install, run only on confirmation) before proceeding.")
+  warnings+=("[SETUP:CLI] The Supaflow CLI is not installed. Resolve via the CLI gate above (offer to install, run only on confirmation) before using the terminal CLI path.")
 else
   cli_version=$(supaflow --version 2>/dev/null || echo "0.0.0")
   if [ "$(printf '%s\n' "$MIN_CLI_VERSION" "$cli_version" | sort -V | head -n1)" != "$MIN_CLI_VERSION" ]; then
-    warnings+=("[SETUP] The Supaflow CLI v${cli_version} is outdated (requires v${MIN_CLI_VERSION}+). Resolve via the setup gate above (offer to upgrade, run only on confirmation) before proceeding.")
+    warnings+=("[SETUP:CLI] The Supaflow CLI v${cli_version} is outdated (requires v${MIN_CLI_VERSION}+). Resolve via the CLI gate above (offer to upgrade, run only on confirmation) before using the terminal CLI path.")
   fi
 
   # 3. Check auth and workspace
   auth_output=$(supaflow auth status --json 2>/dev/null || echo '{}')
   authenticated=$(echo "$auth_output" | grep -o '"authenticated"[[:space:]]*:[[:space:]]*true' || true)
   if [ -z "$authenticated" ]; then
-    warnings+=("[SETUP] The Supaflow CLI is not authenticated. Resolve via the setup gate above (user runs 'supaflow auth login' themselves; no API key in chat) before proceeding.")
+    warnings+=("[SETUP:CLI] The Supaflow CLI is not authenticated. Resolve via the CLI gate above (user runs 'supaflow auth login' themselves; no API key in chat) before using the terminal CLI path.")
   else
     workspace_id=$(echo "$auth_output" | grep -o '"workspace_id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/' || true)
     if [ -z "$workspace_id" ] || [ "$workspace_id" = "null" ]; then
-      warnings+=("[SETUP] No workspace selected. Resolve via the setup gate above (run: supaflow workspaces select <name>) before proceeding.")
+      warnings+=("[SETUP:CLI] No workspace selected. Resolve via the CLI gate above (run: supaflow workspaces select <name>) before using the terminal CLI path.")
     fi
   fi
 fi
@@ -65,9 +68,9 @@ ${using_supaflow_content}"
 if [ ${#warnings[@]} -gt 0 ]; then
   context="${context}
 
-## Setup Issues (detected this session)
+## CLI Path Setup Issues (detected this session)
 
-Resolve each via the setup gate above before any Supaflow operation:"
+These apply only when the CLI fallback path is active. If mcp__supaflow__auth_status is available, run the MCP gate instead:"
   for w in "${warnings[@]}"; do
     context="${context}
 ${w}"

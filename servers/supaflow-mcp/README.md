@@ -54,31 +54,44 @@ install and no per-session login**.
 
 ## Tools
 
-42 tools mirroring the CLI 1:1 (verified against `supaflow-cli/src/commands/*`).
-Each is tagged read-only or write via MCP annotations so Desktop auto-allows
-reads and prompts on writes; deletes are flagged destructive.
+44 tools: 42 raw CLI-surface tools (verified against
+`supaflow-cli/src/commands/*`) plus 2 guided Desktop-safe pipeline creation
+tools. Each is tagged conservatively via MCP annotations. Deletes are flagged
+destructive.
 
-**Read-only (17):** `auth_status`, `workspaces_list`, `connectors_list`,
-`datasources_list`, `datasources_get`, `datasources_catalog`, `pipelines_list`,
-`pipelines_get`, `pipelines_schema_list`, `projects_list`, `jobs_list`,
-`jobs_status`, `jobs_get`, `jobs_logs`, `schedules_list`, `schedules_history`,
-`docs`.
+**Read-only annotated (14):** `auth_status`, `workspaces_list`,
+`connectors_list`, `datasources_list`, `pipelines_list`, `pipelines_get`,
+`pipelines_schema_list`, `projects_list`, `jobs_list`, `jobs_status`,
+`jobs_get`, `jobs_logs`, `schedules_list`, `schedules_history`.
 
-**Write (25):** `datasources_init/create/edit/test/enable/disable/delete/refresh`,
+**Non-read-only / action (30):** `datasources_get`, `datasources_catalog`,
+`docs` (these can write host files or refresh),
+`pipelines_prepare_create`, `pipelines_create_from_plan`, plus
+`datasources_init/create/edit/test/enable/disable/delete/refresh`,
 `pipelines_init/create/edit/schema_select/schema_add/enable/disable/delete/sync`,
 `projects_create`, `schedules_create/edit/delete/enable/disable/run`,
-`workspaces_select`. (`*_delete` are flagged destructive — the MCP approval
-prompt is the confirmation.)
+`workspaces_select`. (`*_delete` are flagged destructive. Workflow skills must
+still get explicit user confirmation before calling them; the MCP approval
+prompt is not the workflow confirmation.)
 
 **Deliberately not exposed:** `auth login` (its `--key` would pass your API key
 through a tool call), `auth logout` (would clear the host auth this relies on),
-`encrypt` (local env-file utility). `datasources get` omits `--output` (it
-writes a credentials env file).
+`encrypt` (local env-file utility).
 
-Every data/action tool runs with `--json`; `docs` returns markdown. Tools that
-write files (`*_init` `--output`, `datasources_catalog` `output_file`,
-`pipelines_init` `--output`) write to the **host** filesystem where the server
-runs — pass host paths, and reuse the same path across `catalog` -> `create`.
+Every data/action tool runs with `--json`; `docs` returns markdown unless
+`output_file` is provided. Tools that write files (`*_init` `--output`,
+`datasources_get` `output_file`, `datasources_catalog` `output_file`, `docs`
+`output_file`, `pipelines_init` `--output`) write to the **host** filesystem
+where the server runs. Pass host paths, and do not assume cowork-VM file tools
+can edit those host files.
+
+For Desktop pipeline creation, prefer the guided pair:
+
+1. `pipelines_prepare_create` returns `structuredContent` with `plan_id`,
+   config values, object count/preview, and host-side plan files.
+2. After the user explicitly confirms the final config and object scope,
+   `pipelines_create_from_plan` accepts structured JSON, writes the required
+   host files internally, runs the CLI create, then verifies selected objects.
 
 ## Smoke test (host)
 
@@ -86,4 +99,4 @@ runs — pass host paths, and reuse the same path across `catalog` -> `create`.
 node -e 'import("@modelcontextprotocol/sdk/client/index.js")' # deps present?
 ```
 Or drive it with any MCP client pointed at `node server.mjs`. Verified locally:
-`tools/list` returns the three tools and `auth_status` returns the live CLI JSON.
+`tools/list` returns 44 tools and `auth_status` returns the live CLI JSON.

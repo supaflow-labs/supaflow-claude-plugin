@@ -26,8 +26,17 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import crypto from "node:crypto";
 
 const execFileP = promisify(execFile);
+const SERVER_VERSION = "0.2.0";
+const DEFAULT_PLAN_ROOT = process.env.SUPAFLOW_MCP_PLAN_DIR || path.join(os.tmpdir(), "supaflow-mcp-plans");
+const DEFAULT_OBJECT_PREVIEW_LIMIT = 1000;
+const MAX_OBJECT_PREVIEW_LIMIT = 1000;
 
 // Ensure `supaflow` and its `#!/usr/bin/env node` shebang resolve under a
 // minimal/GUI PATH (the caller's PATH still takes precedence).
@@ -50,6 +59,153 @@ function multi(argv, flag, vals) {
   if (Array.isArray(vals)) for (const v of vals) argv.push(flag, S(v));
 }
 
+function parseJson(text, label) {
+  try {
+    return JSON.parse(text || "{}");
+  } catch (err) {
+    throw new Error(`Failed to parse ${label} JSON: ${err.message}`);
+  }
+}
+
+function parseCliJson(text, label) {
+  const data = parseJson(text, label);
+  if (data && typeof data === "object" && data.error) {
+    const message = data.error.message || JSON.stringify(data.error);
+    throw new Error(`${label} failed: ${message}`);
+  }
+  return data;
+}
+
+function ensurePlanRoot() {
+  fs.mkdirSync(DEFAULT_PLAN_ROOT, { recursive: true, mode: 0o700 });
+}
+
+function assertPlanId(planId) {
+  if (typeof planId !== "string" || !/^[0-9a-fA-F-]{36}$/.test(planId)) {
+    throw new Error("Invalid plan_id.");
+  }
+}
+
+function planPaths(planId) {
+  assertPlanId(planId);
+  const dir = path.join(DEFAULT_PLAN_ROOT, planId);
+  return {
+    dir,
+    planFile: path.join(dir, "plan.json"),
+    configFile: path.join(dir, "pipeline-config.json"),
+    referenceFile: path.join(dir, "pipeline-config-reference.txt"),
+    objectsFile: path.join(dir, "pipeline-objects.json"),
+    selectedObjectsFile: path.join(dir, "pipeline-selected-objects.json"),
+  };
+}
+
+function loadPlan(planId) {
+  const paths = planPaths(planId);
+  if (!fs.existsSync(paths.planFile)) {
+    throw new Error(`Pipeline create plan "${planId}" not found or expired.`);
+  }
+  return { paths, plan: parseJson(fs.readFileSync(paths.planFile, "utf8"), "pipeline plan") };
+}
+
+function configSummary(config) {
+  return {
+    pipeline_prefix: config?.pipeline_prefix,
+    ingestion_mode: config?.ingestion_mode,
+    load_mode: config?.load_mode,
+    schema_evolution_mode: config?.schema_evolution_mode,
+    perform_hard_deletes: config?.perform_hard_deletes,
+    full_sync_frequency: config?.full_sync_frequency ?? null,
+    error_handling: config?.error_handling ?? null,
+  };
+}
+
+export function normalizeObjectPreviewLimit(value) {
+  const parsed = Number.parseInt(String(value ?? DEFAULT_OBJECT_PREVIEW_LIMIT), 10);
+  const limit = Number.isNaN(parsed) ? DEFAULT_OBJECT_PREVIEW_LIMIT : parsed;
+  return Math.min(Math.max(limit, 1), MAX_OBJECT_PREVIEW_LIMIT);
+}
+
+export function applyConfigPatch(baseConfig, patch = {}) {
+  const next = { ...(baseConfig || {}) };
+  for (const [key, value] of Object.entries(patch || {})) {
+    next[key] = value;
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(patch || {}, "pipeline_prefix") &&
+    patch.pipeline_prefix !== baseConfig?.pipeline_prefix
+  ) {
+    next.is_custom_prefix = true;
+  }
+  return next;
+}
+
+export function applyObjectSelection(objects, selection) {
+  if (!selection || selection.mode === "all") {
+    return {
+      mode: "all",
+      objects: objects.map((o) => ({ ...o, selected: true })),
+      selected: objects.map((o) => o.fully_qualified_name),
+      missing: [],
+    };
+  }
+
+  if (selection.mode !== "subset") {
+    throw new Error('object_selection.mode must be "all" or "subset".');
+  }
+
+  const include = Array.isArray(selection.include) ? selection.include : [];
+  if (include.length === 0) {
+    throw new Error('object_selection.include is required when mode is "subset".');
+  }
+
+  const available = new Set(objects.map((o) => o.fully_qualified_name));
+  const missing = include.filter((name) => !available.has(name));
+  if (missing.length > 0) {
+    throw new Error(`Unknown object(s) in selection: ${missing.join(", ")}`);
+  }
+
+  const includeSet = new Set(include);
+  return {
+    mode: "subset",
+    objects: objects.map((o) => ({ ...o, selected: includeSet.has(o.fully_qualified_name) })),
+    selected: include,
+    missing: [],
+  };
+}
+
+export function buildPipelineCreateFromPlanArgv({ name, description, source, project, configFile, objectsFile }) {
+  const argv = [
+    "pipelines",
+    "create",
+    "--name",
+    name,
+    "--source",
+    source,
+    "--project",
+    project,
+    "--config",
+    configFile,
+    "--objects",
+    objectsFile,
+  ];
+  if (description) {
+    argv.push("--description", description);
+  }
+  argv.push("--json");
+  return argv;
+}
+
+function objectNames(objects) {
+  return objects.map((o) => o.fully_qualified_name).filter((name) => typeof name === "string" && name.length > 0);
+}
+
+function toolResult(message, structuredContent) {
+  return {
+    content: [{ type: "text", text: message }],
+    structuredContent,
+  };
+}
+
 const idSchema = (label = "UUID or api_name") => ({
   type: "object",
   properties: { identifier: { type: "string", description: label } },
@@ -63,8 +219,60 @@ const jobIdSchema = {
   additionalProperties: false,
 };
 
+const pipelinePrepareCreateOutputSchema = {
+  type: "object",
+  properties: {
+    plan_id: { type: "string" },
+    plan_dir: { type: "string" },
+    source: { type: "string" },
+    project: { type: "string" },
+    source_name: { type: "string" },
+    source_type: { type: "string" },
+    destination_name: { type: "string" },
+    project_name: { type: "string" },
+    config: { type: "object", additionalProperties: true },
+    config_summary: { type: "object", additionalProperties: true },
+    object_count: { type: "number" },
+    objects_preview: { type: "array", items: { type: "string" } },
+    objects_truncated: { type: "boolean" },
+    host_files: { type: "object", additionalProperties: { type: "string" } },
+    warnings: { type: "array", items: { type: "string" } },
+  },
+  required: [
+    "plan_id",
+    "plan_dir",
+    "source",
+    "project",
+    "source_name",
+    "source_type",
+    "destination_name",
+    "project_name",
+    "config",
+    "config_summary",
+    "object_count",
+    "objects_preview",
+    "objects_truncated",
+    "host_files",
+    "warnings",
+  ],
+  additionalProperties: false,
+};
+
+const pipelineCreateFromPlanOutputSchema = {
+  type: "object",
+  properties: {
+    plan_id: { type: "string" },
+    pipeline: { type: "object", additionalProperties: true },
+    config_summary: { type: "object", additionalProperties: true },
+    object_selection: { type: "object", additionalProperties: true },
+    verification: { type: "object", additionalProperties: true },
+  },
+  required: ["plan_id", "pipeline", "config_summary", "object_selection", "verification"],
+  additionalProperties: false,
+};
+
 // ---- the tool table: 1:1 with the CLI ----
-const TOOLS = [
+export const TOOLS = [
   // ---------- read-only ----------
   {
     name: "auth_status",
@@ -91,7 +299,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        limit: { type: "number", description: "Max results (default 25; CLI caps at 200).", default: 25 },
+        limit: { type: "number", description: "Max results (default 25). Use 200 for broad scans.", default: 25 },
         offset: { type: "number", description: "Pagination offset.", default: 0 },
         filter: { type: "array", items: { type: "string" }, description: "field=value filters (repeatable)." },
       },
@@ -107,16 +315,29 @@ const TOOLS = [
   },
   {
     name: "datasources_get",
-    description: "Get datasource details by UUID or api_name.",
-    readOnly: true,
-    inputSchema: idSchema(),
-    build: (a) => ["datasources", "get", a.identifier],
+    description:
+      "Get datasource details by UUID or api_name. Pass output_file to export a host-side env file for datasources_edit.",
+    readOnly: false,
+    inputSchema: {
+      type: "object",
+      properties: {
+        identifier: { type: "string", description: "UUID or api_name" },
+        output_file: { type: "string", description: "Host path for exported env file used by datasources_edit." },
+      },
+      required: ["identifier"],
+      additionalProperties: false,
+    },
+    build: (a) => {
+      const v = ["datasources", "get", a.identifier];
+      opt(v, "--output", a.output_file);
+      return v;
+    },
   },
   {
     name: "datasources_catalog",
     description:
       "List discovered objects for a datasource. Can be large -- pass output_file to write objects.json to disk instead of returning it inline.",
-    readOnly: true,
+    readOnly: false,
     timeoutMs: 180000,
     inputSchema: {
       type: "object",
@@ -272,14 +493,17 @@ const TOOLS = [
   },
   {
     name: "docs",
-    description: "Show Supaflow documentation for a connector or topic (returns markdown). Use list:true to list topics.",
-    readOnly: true,
+    description:
+      "Show Supaflow documentation for a connector or topic. Pass output_file for large docs; use list:true to list topics.",
+    readOnly: false,
     json: false,
     inputSchema: {
       type: "object",
       properties: {
         topic: { type: "string", description: "Connector or topic name." },
         list: { type: "boolean", description: "List all available topics." },
+        output_file: { type: "string", description: "Write documentation to this host file instead of returning it inline." },
+        refresh: { type: "boolean", description: "Force refresh the docs cache before reading." },
       },
       additionalProperties: false,
     },
@@ -287,6 +511,8 @@ const TOOLS = [
       const v = ["docs"];
       if (a.topic) v.push(a.topic);
       bool(v, "--list", a.list);
+      opt(v, "--output", a.output_file);
+      bool(v, "--refresh", a.refresh);
       return v;
     },
   },
@@ -405,6 +631,75 @@ const TOOLS = [
     },
   },
   {
+    name: "pipelines_prepare_create",
+    description:
+      "Guided Desktop-safe pipeline creation step 1. Generates host-side config/catalog files internally and returns structured JSON for review; does not create a pipeline.",
+    write: true,
+    timeoutMs: 240000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        source: { type: "string", description: "Source datasource UUID or api_name." },
+        project: { type: "string", description: "Project UUID or api_name; destination is resolved from project." },
+        object_preview_limit: {
+          type: "number",
+          description: "Max object names to return in structured preview (default 1000, max 1000). Full catalog remains in the host-side plan.",
+          default: DEFAULT_OBJECT_PREVIEW_LIMIT,
+        },
+        refresh_catalog: {
+          type: "boolean",
+          description: "Trigger schema refresh before catalog export. Use only after the user asks for a refresh.",
+        },
+      },
+      required: ["source", "project"],
+      additionalProperties: false,
+    },
+    outputSchema: pipelinePrepareCreateOutputSchema,
+    handler: preparePipelineCreate,
+  },
+  {
+    name: "pipelines_create_from_plan",
+    description:
+      "Guided Desktop-safe pipeline creation step 2. Creates a pipeline from a prepared plan after explicit user confirmation; MCP writes required host files internally and verifies selected objects.",
+    write: true,
+    timeoutMs: 180000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        plan_id: { type: "string", description: "plan_id returned by pipelines_prepare_create." },
+        name: { type: "string", description: "Pipeline name confirmed by the user." },
+        description: { type: "string", description: "Optional pipeline description." },
+        confirmed: {
+          type: "boolean",
+          enum: [true],
+          description: "Must be true only after the user explicitly confirms the final config and object scope.",
+        },
+        config_patch: {
+          type: "object",
+          description: "Shallow config overrides relative to the prepared config.",
+          additionalProperties: true,
+        },
+        object_selection: {
+          type: "object",
+          properties: {
+            mode: { type: "string", enum: ["all", "subset"] },
+            include: {
+              type: "array",
+              items: { type: "string" },
+              description: "Fully-qualified object names to include when mode is subset.",
+            },
+          },
+          required: ["mode"],
+          additionalProperties: false,
+        },
+      },
+      required: ["plan_id", "name", "confirmed", "object_selection"],
+      additionalProperties: false,
+    },
+    outputSchema: pipelineCreateFromPlanOutputSchema,
+    handler: createPipelineFromPlan,
+  },
+  {
     name: "pipelines_create",
     description: "Create a new pipeline. Use pipelines_init first and present config + object scope for confirmation.",
     write: true,
@@ -499,7 +794,8 @@ const TOOLS = [
   },
   {
     name: "pipelines_delete",
-    description: "Delete a pipeline (soft delete). The MCP approval prompt is the confirmation.",
+    description:
+      "Delete a pipeline (soft delete). The skill must get explicit user confirmation before this tool call; MCP approval alone is not the workflow confirmation.",
     write: true,
     destructive: true,
     inputSchema: idSchema("Pipeline UUID or api_name"),
@@ -652,55 +948,247 @@ const TOOLS = [
 
 const BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
-async function runSupaflow(spec, args) {
-  const argv = spec.build(args || {});
+export function getToolSpec(name) {
+  return BY_NAME.get(name) || null;
+}
+
+export function buildSupaflowArgv(name, args = {}) {
+  const spec = BY_NAME.get(name);
+  if (!spec) throw new Error(`Unknown tool: ${name}`);
+  if (!spec.build) throw new Error(`Tool ${name} does not map directly to one CLI argv.`);
+  const argv = [...spec.build(args || {})];
   if (spec.json !== false) argv.push("--json");
+  return argv;
+}
+
+async function execSupaflowArgv(argv, timeoutMs = 60000) {
   const { stdout } = await execFileP("supaflow", argv, {
     env: CHILD_ENV,
     maxBuffer: 32 * 1024 * 1024,
-    timeout: spec.timeoutMs || 60000,
+    timeout: timeoutMs,
   });
   return stdout;
 }
 
-const server = new Server(
-  { name: "supaflow", version: "0.2.0" },
-  { capabilities: { tools: {} } },
-);
+async function runSupaflow(spec, args) {
+  const argv = buildSupaflowArgv(spec.name, args);
+  return execSupaflowArgv(argv, spec.timeoutMs || 60000);
+}
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: TOOLS.map((t) => ({
+async function preparePipelineCreate(args) {
+  ensurePlanRoot();
+  const planId = crypto.randomUUID();
+  const paths = planPaths(planId);
+  fs.mkdirSync(paths.dir, { recursive: true, mode: 0o700 });
+
+  const initArgv = [
+    "pipelines",
+    "init",
+    "--source",
+    args.source,
+    "--project",
+    args.project,
+    "--output",
+    paths.configFile,
+    "--json",
+  ];
+  const init = parseCliJson(await execSupaflowArgv(initArgv, 120000), "pipelines init");
+  const config = init.config || parseJson(fs.readFileSync(paths.configFile, "utf8"), "pipeline config");
+
+  const catalogArgv = ["datasources", "catalog", args.source, "--output", paths.objectsFile];
+  if (args.refresh_catalog === true) catalogArgv.push("--refresh");
+  catalogArgv.push("--json");
+  const catalog = parseCliJson(await execSupaflowArgv(catalogArgv, 240000), "datasources catalog");
+  const objects = fs.existsSync(paths.objectsFile)
+    ? parseJson(fs.readFileSync(paths.objectsFile, "utf8"), "pipeline objects")
+    : [];
+  if (!Array.isArray(objects)) {
+    throw new Error("datasources catalog output file did not contain an object array.");
+  }
+
+  const names = objectNames(objects);
+  const previewLimit = normalizeObjectPreviewLimit(args.object_preview_limit);
+  const warnings = [];
+  if (names.length === 0) {
+    warnings.push("No discovered source objects were found. Refresh the datasource catalog before creating a pipeline.");
+  }
+
+  const plan = {
+    schema_version: 1,
+    created_at: new Date().toISOString(),
+    source: args.source,
+    project: args.project,
+    init,
+    catalog,
+    config,
+    files: {
+      config: paths.configFile,
+      reference: paths.referenceFile,
+      objects: paths.objectsFile,
+      selected_objects: paths.selectedObjectsFile,
+    },
+  };
+  fs.writeFileSync(paths.planFile, JSON.stringify(plan, null, 2) + "\n", { mode: 0o600 });
+
+  const structuredContent = {
+    plan_id: planId,
+    plan_dir: paths.dir,
+    source: args.source,
+    project: args.project,
+    source_name: init.source || "",
+    source_type: init.source_type || "",
+    destination_name: init.destination || "",
+    project_name: init.project || "",
+    config,
+    config_summary: configSummary(config),
+    object_count: names.length,
+    objects_preview: names.slice(0, previewLimit),
+    objects_truncated: names.length > previewLimit,
+    host_files: {
+      config: paths.configFile,
+      reference: paths.referenceFile,
+      objects: paths.objectsFile,
+      plan: paths.planFile,
+    },
+    warnings,
+  };
+
+  return toolResult(
+    `Prepared pipeline create plan ${planId}. Review config_summary and object scope before calling pipelines_create_from_plan.`,
+    structuredContent,
+  );
+}
+
+async function createPipelineFromPlan(args) {
+  if (args.confirmed !== true) {
+    throw new Error("confirmed must be true after explicit user confirmation.");
+  }
+
+  const { paths, plan } = loadPlan(args.plan_id);
+  const baseConfig = plan.config || parseJson(fs.readFileSync(paths.configFile, "utf8"), "pipeline config");
+  const finalConfig = applyConfigPatch(baseConfig, args.config_patch || {});
+  fs.writeFileSync(paths.configFile, JSON.stringify(finalConfig, null, 2) + "\n", "utf8");
+
+  const objects = parseJson(fs.readFileSync(paths.objectsFile, "utf8"), "pipeline objects");
+  if (!Array.isArray(objects)) {
+    throw new Error("Prepared object file did not contain an object array.");
+  }
+
+  const selection = applyObjectSelection(objects, args.object_selection);
+  fs.writeFileSync(paths.selectedObjectsFile, JSON.stringify(selection.objects, null, 2) + "\n", "utf8");
+  const createArgv = buildPipelineCreateFromPlanArgv({
+    name: args.name,
+    description: args.description,
+    source: plan.source,
+    project: plan.project,
+    configFile: paths.configFile,
+    objectsFile: paths.selectedObjectsFile,
+  });
+
+  const created = parseCliJson(await execSupaflowArgv(createArgv, 180000), "pipelines create");
+
+  let verification = {
+    status: "not_verified",
+    selected_count: null,
+    excluded_count: null,
+    selected_preview: [],
+    error: null,
+  };
+  try {
+    const verifyIdentifier = created.api_name || created.id;
+    const verifyOut = await execSupaflowArgv(["pipelines", "schema", "list", verifyIdentifier, "--all", "--json"], 120000);
+    const schema = parseCliJson(verifyOut, "pipelines schema list");
+    if (Array.isArray(schema)) {
+      const selected = schema.filter((o) => o.selected !== false).map((o) => o.fully_qualified_name);
+      const excluded = schema.filter((o) => o.selected === false);
+      verification = {
+        status: "verified",
+        selected_count: selected.length,
+        excluded_count: excluded.length,
+        selected_preview: selected.slice(0, DEFAULT_OBJECT_PREVIEW_LIMIT),
+        error: null,
+      };
+    } else {
+      verification.error = "Schema verification did not return an array.";
+    }
+  } catch (err) {
+    verification.error = err.message || String(err);
+  }
+
+  const structuredContent = {
+    plan_id: args.plan_id,
+    pipeline: created,
+    config_summary: configSummary(finalConfig),
+    object_selection: {
+      mode: selection.mode,
+      selected_count: selection.mode === "all" ? objects.length : selection.selected.length,
+      total_count: objects.length,
+      selected_preview: selection.selected.slice(0, DEFAULT_OBJECT_PREVIEW_LIMIT),
+      objects_file: paths.selectedObjectsFile,
+    },
+    verification,
+  };
+
+  return toolResult(`Created pipeline ${created.api_name || created.name || created.id}. Verification status: ${verification.status}.`, structuredContent);
+}
+
+export function listToolDefinitions() {
+  return TOOLS.map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: t.inputSchema || { type: "object", properties: {}, additionalProperties: false },
+    outputSchema: t.outputSchema,
     annotations: {
       readOnlyHint: !!t.readOnly,
       destructiveHint: !!t.destructive,
       idempotentHint: !!t.readOnly,
       openWorldHint: true,
     },
-  })),
-}));
+  }));
+}
 
-server.setRequestHandler(CallToolRequestSchema, async (req) => {
-  const { name, arguments: args = {} } = req.params;
-  const spec = BY_NAME.get(name);
-  if (!spec) {
-    return { isError: true, content: [{ type: "text", text: `Unknown tool: ${name}` }] };
-  }
-  try {
-    const out = await runSupaflow(spec, args);
-    return { content: [{ type: "text", text: out || "(no output)" }] };
-  } catch (err) {
-    // CLI errors emit {"error":{code,message}} on stdout with a non-zero exit.
-    const body =
-      err?.stdout?.toString?.().trim() ||
-      err?.stderr?.toString?.().trim() ||
-      err?.message ||
-      String(err);
-    return { isError: true, content: [{ type: "text", text: body }] };
-  }
-});
+export function createServer() {
+  const server = new Server(
+    { name: "supaflow", version: SERVER_VERSION },
+    { capabilities: { tools: {} } },
+  );
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: listToolDefinitions(),
+  }));
+
+  server.setRequestHandler(CallToolRequestSchema, async (req) => {
+    const { name, arguments: args = {} } = req.params;
+    const spec = BY_NAME.get(name);
+    if (!spec) {
+      return { isError: true, content: [{ type: "text", text: `Unknown tool: ${name}` }] };
+    }
+    try {
+      if (spec.handler) {
+        return await spec.handler(args);
+      }
+      const out = await runSupaflow(spec, args);
+      return { content: [{ type: "text", text: out || "(no output)" }] };
+    } catch (err) {
+      // CLI errors emit {"error":{code,message}} on stdout with a non-zero exit.
+      const body =
+        err?.stdout?.toString?.().trim() ||
+        err?.stderr?.toString?.().trim() ||
+        err?.message ||
+        String(err);
+      return { isError: true, content: [{ type: "text", text: body }] };
+    }
+  });
+
+  return server;
+}
+
+export async function main() {
+  const server = createServer();
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  await main();
+}

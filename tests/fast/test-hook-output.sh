@@ -51,6 +51,7 @@ additional_ctx=$(echo "$output" | python3 -c "import json,sys; d=json.load(sys.s
 assert_contains "$additional_ctx" "HARD RULES" "healthy env: additionalContext contains HARD RULES"
 assert_contains "$additional_ctx" "Available Commands" "healthy env: additionalContext contains commands table"
 assert_contains "$additional_ctx" "Parser Contracts" "healthy env: additionalContext contains parser contracts"
+assert_contains "$additional_ctx" "Desktop MCP path" "healthy env: additionalContext contains MCP gate"
 
 # The setup gate must be injected, and ahead of the entry skill.
 assert_contains "$additional_ctx" "Supaflow Setup Gate" "healthy env: additionalContext contains the setup gate"
@@ -63,13 +64,13 @@ print('before' if ok else 'not_before')
 " 2>/dev/null || echo "err")
 assert_contains "$gate_order" "^before$" "healthy env: setup gate is injected before the entry skill"
 
-assert_not_contains "$output" "\[SETUP\]" "healthy env: no [SETUP] warnings"
+assert_not_contains "$output" "\[SETUP:CLI\]" "healthy env: no CLI setup warnings"
 
 # Scenario 2: Missing CLI - supaflow not on PATH
 mock_dir=$(create_mock_cli)
 rm -f "$mock_dir/supaflow"
 output=$(run_hook_with_mocks "$mock_dir")
-assert_contains "$output" "\[SETUP\]" "missing CLI: output contains [SETUP]"
+assert_contains "$output" "\[SETUP:CLI\]" "missing CLI: output contains CLI setup warning"
 assert_contains "$output" "not installed" "missing CLI: output contains 'not installed'"
 
 # Scenario 3: Old CLI version
