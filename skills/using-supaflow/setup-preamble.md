@@ -18,9 +18,11 @@ Run the MCP gate below.
 
 If no `mcp__supaflow__*` tools are available, use the CLI gate below. The slash commands are CLI workflows and remain valid in terminal Claude Code sessions where `Bash(supaflow *)` can see the local CLI.
 
+In terminal Claude Code, this plugin's `.mcp.json` auto-launches the host `supaflow mcp` server, so `mcp__supaflow__*` tools are normally present here too and are preferred over `Bash(supaflow *)`. The CLI gate is the fallback for when they are not yet available -- e.g. before the CLI is installed, or pending a session restart after install.
+
 ### No valid surface
 
-If neither MCP tools nor a working CLI path are available, STOP. For Desktop, tell the user to install `@getsupaflow/cli` (0.2.0+) and register `supaflow mcp` in `claude_desktop_config.json` (`{ "mcpServers": { "supaflow": { "command": "supaflow", "args": ["mcp"] } } }`), then restart Claude Desktop; do NOT suggest plugin `.mcp.json` for Desktop because that runs inside the cowork VM.
+If neither MCP tools nor a working CLI path are available, STOP. For Desktop, tell the user to install `@getsupaflow/cli` (0.2.0+) and register `supaflow mcp` in `claude_desktop_config.json` (`{ "mcpServers": { "supaflow": { "command": "supaflow", "args": ["mcp"] } } }`), then restart Claude Desktop; do NOT suggest plugin `.mcp.json` for Desktop because that runs inside the cowork VM. (Terminal Claude Code is different: there the plugin `.mcp.json` runs on the host and is the intended MCP surface -- the no-plugin-`.mcp.json` rule is specific to Claude Desktop.)
 
 ## 1. MCP gate (Desktop)
 

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "supaflow": {
+      "command": "supaflow",
+      "args": ["mcp"]
+    }
+  }
+}
