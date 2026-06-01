@@ -1,6 +1,6 @@
 {
   "name": "supaflow",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Official Supaflow (supa-flow.io) plugin for Claude Code to manage data pipelines, ETL/ELT syncs, connectors, warehouse loading, schedules, and job monitoring with the Supaflow CLI.",
   "author": {
     "name": "supaflow-labs",
