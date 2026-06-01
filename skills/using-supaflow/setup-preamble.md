@@ -20,7 +20,7 @@ If no `mcp__supaflow__*` tools are available, use the CLI gate below. The slash 
 
 ### No valid surface
 
-If neither MCP tools nor a working CLI path are available, STOP. For Desktop, tell the user to register the host-side stdio MCP server from `servers/supaflow-mcp/README.md`; do NOT suggest plugin `.mcp.json` for Desktop because that runs inside the cowork VM.
+If neither MCP tools nor a working CLI path are available, STOP. For Desktop, tell the user to install `@getsupaflow/cli` (0.2.0+) and register `supaflow mcp` in `claude_desktop_config.json` (`{ "mcpServers": { "supaflow": { "command": "supaflow", "args": ["mcp"] } } }`), then restart Claude Desktop; do NOT suggest plugin `.mcp.json` for Desktop because that runs inside the cowork VM.
 
 ## 1. MCP gate (Desktop)
 
@@ -30,7 +30,7 @@ Run in order when `mcp__supaflow__auth_status` is available.
 
 Call `mcp__supaflow__auth_status` with no arguments.
 
-If the tool is missing, errors before returning JSON, or reports that `supaflow` cannot be found, STOP. Tell the user the host-side MCP server is not correctly registered or cannot see the host Supaflow CLI. The fix is host-side: install/update the host CLI, fix the host MCP config, then restart Claude Desktop.
+If the tool is missing, errors before returning JSON, or reports that `supaflow` cannot be found, STOP. Tell the user the host-side MCP server is not correctly registered or cannot see the host Supaflow CLI. The fix is host-side: install/update `@getsupaflow/cli` to 0.2.0+, register `supaflow mcp` in `claude_desktop_config.json`, then restart Claude Desktop.
 
 ### 1B. Authenticated -- the user logs in; no API key in chat
 
