@@ -329,17 +329,22 @@ View and update which objects a pipeline syncs:
 # List selected objects (import-ready format)
 supaflow pipelines schema list <identifier> --json
 
-# List all objects (including deselected)
+# Include field-level selections for selected objects (larger, but still selected-only)
+supaflow pipelines schema list <identifier> --with-fields --json
+
+# List all objects only when you need currently deselected objects
 supaflow pipelines schema list <identifier> --all --json
 
-# Add a single object by name (no file needed)
+# Add a single currently deselected object by name (no file export needed)
 supaflow pipelines schema add <identifier> Opportunity --json
 
-# Roundtrip: export, edit, reimport
-supaflow pipelines schema list <identifier> --all --json > objects.json
-# Edit objects.json (toggle selected: true/false)
+# Roundtrip selected objects: export, edit, reimport
+supaflow pipelines schema list <identifier> --with-fields --json > objects.json
+# Edit objects.json to deselect selected objects or preserve field-level selections
 supaflow pipelines schema select <identifier> --from objects.json --json
 ```
+
+Do not use `--all` by default. It scans the full source catalog and can produce very large output for sources such as SAP SuccessFactors. Use `--all` only when the task requires discovering or bulk-selecting objects that are not currently selected.
 
 **Schema list JSON shape** -- returns a raw array (NOT wrapped in `{ data: [...] }`). Uses `fully_qualified_name`:
 ```json
@@ -349,16 +354,15 @@ supaflow pipelines schema select <identifier> --from objects.json --json
 ]
 ```
 
-This is the same shape consumed by `schema select --from` and `pipelines create --objects`.
+With `--with-fields`, each object includes field-level selections in the same shape consumed by `schema select --from` and `pipelines create --objects`.
 
 **Parsing example:**
 ```bash
-supaflow pipelines schema list <identifier> --all --json | python3 -c "
+supaflow pipelines schema list <identifier> --json | python3 -c "
 import sys,json; objs=json.load(sys.stdin)
 if isinstance(objs, dict) and 'error' in objs: print(objs['error']['message']); sys.exit(1)
 for o in objs:
-    sel = 'SELECTED' if o['selected'] else 'excluded'
-    print(f\"  {o['fully_qualified_name']} | {sel}\")
+    print(f\"  {o['fully_qualified_name']}\")
 "
 ```
 

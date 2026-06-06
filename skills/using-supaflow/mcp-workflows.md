@@ -16,7 +16,7 @@ Use for: "create pipeline", "sync source to destination", "build a pipeline". Th
 3. Run the duplicate-prevention gate before preparing config:
    - Page `mcp__supaflow__pipelines_list` with `limit: 200` and increasing `offset` until all pages are exhausted.
    - Compare each pipeline's `source.datasource_id` to the source id and `destination.datasource_id` to the destination id.
-   - If a matching pipeline exists, show its name, api_name, state, source, destination, and project; call `mcp__supaflow__pipelines_schema_list` with `all: true`; report selected/excluded counts.
+   - If a matching pipeline exists, show its name, api_name, state, source, destination, and project; call `mcp__supaflow__pipelines_schema_list` without `all`; report the selected object count and preview. Do not call with `all: true` during duplicate review unless the user asks to inspect currently deselected objects.
    - Then ask exactly one question: edit/use the existing pipeline, add objects to it, or create a separate pipeline.
    - If the user chooses a separate pipeline, warn that it uses a separate pipeline prefix and writes to a separate destination schema; require explicit confirmation before continuing.
 4. Ask for the pipeline name. Suggest a source-to-destination name, but do not create yet.

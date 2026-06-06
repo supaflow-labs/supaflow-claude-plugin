@@ -147,12 +147,11 @@ supaflow pipelines edit <pipeline-api-name> --name "New Name" --description "New
 First, list the current selected objects.
 
 ```bash
-supaflow pipelines schema list <pipeline-api-name> --all --json | python3 -c "
+supaflow pipelines schema list <pipeline-api-name> --json | python3 -c "
 import sys,json; objs=json.load(sys.stdin)
 if isinstance(objs, dict) and 'error' in objs: print(objs['error']['message']); sys.exit(1)
 for o in objs:
-    sel = 'SELECTED' if o['selected'] else 'excluded'
-    print(f\"  {o['fully_qualified_name']} | {sel}\")
+    print(f\"  {o['fully_qualified_name']}\")
 "
 ```
 
@@ -172,22 +171,23 @@ print('Object added successfully')
 
 ### Bulk Object Selection
 
-For multiple changes, export current selections, edit, then reimport:
+For multiple changes to currently selected objects, export selected objects, edit, then reimport. Use `--with-fields` when preserving or changing field selections.
 
 ```bash
-# Export current selections to a file (raw array with fully_qualified_name)
-supaflow pipelines schema list <pipeline-api-name> --all --json > /tmp/objects.json
+# Export selected objects to a file (raw array with fully_qualified_name)
+supaflow pipelines schema list <pipeline-api-name> --with-fields --json > /tmp/objects.json
 
 # Read and show current state
 python3 -c "
 import json
 objs = json.load(open('/tmp/objects.json'))
-print(f'Total objects: {len(objs)}')
+print(f'Selected objects: {len(objs)}')
 for o in objs:
-    state = 'SELECTED' if o['selected'] else 'excluded'
-    print(f\"  {o['fully_qualified_name']} | {state}\")
+    print(f\"  {o['fully_qualified_name']} | selected\")
 "
 ```
+
+Only use `--all` when you must add currently unselected objects in bulk. `--all` scans the full source catalog and can produce very large files for sources such as SAP SuccessFactors.
 
 Edit selections:
 
@@ -195,17 +195,19 @@ Edit selections:
 python3 -c "
 import json
 objs = json.load(open('/tmp/objects.json'))
-# Enable objects
-for o in objs:
-    if o['fully_qualified_name'] in ['public.orders', 'public.customers']:
-        o['selected'] = True
-# Disable objects
+# Disable selected objects
 for o in objs:
     if 'internal' in o['fully_qualified_name']:
         o['selected'] = False
 json.dump(objs, open('/tmp/objects.json', 'w'), indent=2)
 print('Updated.')
 "
+```
+
+To enable multiple currently unselected objects, first ask for confirmation, then export all objects:
+
+```bash
+supaflow pipelines schema list <pipeline-api-name> --all --json > /tmp/objects.json
 ```
 
 Apply the new selection:

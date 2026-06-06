@@ -142,6 +142,8 @@ These are the correct JSON field names for each CLI output. Never invent alterna
 
 **`pipelines schema list --json`:** returns a raw JSON array (NOT wrapped in `{ data: [...] }`). Each item uses `fully_qualified_name`, `selected`, `fields`
 - This is the same shape consumed by `pipelines schema select --from`
+- Default to selected objects only. Use `--with-fields` when preserving or editing field selections.
+- Use `--all` only when the task requires currently deselected objects; it scans the full catalog and can produce very large output.
 - NEVER use `object` or `name` (old contract, removed)
 
 **`projects list --json`:** match destination by `warehouse_datasource_id`, not `warehouse_name`
