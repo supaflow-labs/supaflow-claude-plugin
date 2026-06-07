@@ -30,7 +30,7 @@ The plugin is organized in four layers:
 
 **`using-supaflow` skill** - Injected at session start. Establishes the setup gate, chooses Desktop MCP vs terminal CLI, and routes incoming requests to the correct workflow or domain skill.
 
-**Desktop MCP server** - Ships inside `@getsupaflow/cli` (v0.2.0+) as `supaflow mcp`, registered host-side in `claude_desktop_config.json` (see Setup). It exposes `mcp__supaflow__*` tools by shelling out to the host `supaflow` CLI, so Claude Desktop uses the host CLI and `~/.supaflow/config.json` instead of the cowork VM. Guided tools return structured JSON and keep host-side temp files inside MCP.
+**Desktop MCP server** - Ships inside `@getsupaflow/cli` (v0.3.0+) as `supaflow mcp`, registered host-side in `claude_desktop_config.json` (see Setup). It exposes `mcp__supaflow__*` tools by shelling out to the host `supaflow` CLI, so Claude Desktop uses the host CLI and `~/.supaflow/config.json` instead of the cowork VM. Guided tools return structured JSON and keep host-side temp files inside MCP.
 
 **Commands** - Terminal CLI execution layer and workflow specs. Each command maps to one user-facing workflow and preserves tested guardrails for confirmations, parser contracts, and destructive actions.
 
@@ -65,7 +65,7 @@ Domain skills are loaded automatically when a command needs them. They are not i
 
 ### Claude Desktop
 
-Desktop usage should use the host-side MCP server that ships with the CLI (`@getsupaflow/cli` 0.2.0+). Register it in `claude_desktop_config.json`; do not use a plugin `.mcp.json` for Desktop, because that runs inside the cowork VM where the host CLI and `~/.supaflow/config.json` are not visible.
+Desktop usage should use the host-side MCP server that ships with the CLI (`@getsupaflow/cli` 0.3.0+). Register it in `claude_desktop_config.json`; do not use a plugin `.mcp.json` for Desktop, because that runs inside the cowork VM where the host CLI and `~/.supaflow/config.json` are not visible.
 
 ```json
 {
@@ -85,7 +85,7 @@ Then restart Claude Desktop. The server reuses the host's `~/.supaflow/config.js
 When MCP tools are not available, the plugin falls back to CLI checks. On first session after install, the plugin verifies:
 
 - Node.js 18+ is installed
-- Supaflow CLI v0.2.0+ is installed (`npm install -g @getsupaflow/cli`)
+- Supaflow CLI v0.3.0+ is installed (`npm install -g @getsupaflow/cli`)
 - CLI is authenticated with a valid API key (`supaflow auth login`)
 - A workspace is selected (`supaflow workspaces select`)
 
