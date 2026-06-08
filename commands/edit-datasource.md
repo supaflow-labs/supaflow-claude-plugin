@@ -96,6 +96,8 @@ supaflow datasources get <NAME_OR_API_NAME> --output current_<api_name>.env
 
 Read the exported env file with the Read tool. Use the Edit tool to update only the fields that need to change. Do NOT modify encrypted `enc:` prefixed values unless replacing them.
 
+Even for a one-field change such as `host`, use this env-file export/edit/submit flow. Do NOT hand-edit the `datasources get --json` `configs` object and try to resubmit it; JSON encrypted envelopes are for inspection/pass-through context, not a supported `--from` input format.
+
 Before submitting, show the user what changed and ask for explicit confirmation:
 
 ```
@@ -106,7 +108,11 @@ Changes to apply:
 All other settings remain unchanged. Proceed?
 ```
 
-**Do NOT run `datasources edit` until the user explicitly confirms.** Then submit:
+**Do NOT run `datasources edit` until the user explicitly confirms.**
+
+If the updated connection is intentionally reachable from the Supaflow agent/runtime but not from the local CLI host (for example `host.docker.internal`, a container-only hostname, or a private/VPC hostname), submit with `--skip-test`. The default edit test runs from the CLI host and can false-fail before saving; in this case the agent validates the datasource on the next sync or explicit datasource test from the reachable environment.
+
+Then submit:
 
 ```bash
 supaflow datasources edit <NAME_OR_API_NAME> --from current_<api_name>.env --json | python3 -c "
@@ -114,6 +120,17 @@ import sys,json; d=json.load(sys.stdin)
 if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
 print(f\"Updated: {d.get('name')} (api_name={d.get('api_name')})\")
 print(f\"State: {d.get('state')}\")
+"
+```
+
+Use this variant for agent-only/internal hostnames:
+
+```bash
+supaflow datasources edit <NAME_OR_API_NAME> --from current_<api_name>.env --skip-test --json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
+print(f\"Updated: {d.get('name')} (api_name={d.get('api_name')})\")
+print(f\"State: {d.get('state')} | tested: {d.get('tested')}\")
 "
 ```
 
@@ -156,6 +173,8 @@ print(f\"State: {d.get('state')}\")
 ```
 
 The CLI auto-encrypts any plaintext value in the env file before submission. Unchanged `enc:` prefixed values are passed through without re-encryption.
+
+Use `--skip-test` for sensitive edits too when the resulting connection is intentionally reachable only from the Supaflow agent/runtime and the local CLI host cannot resolve or reach it.
 
 ## Step 6: Re-test the Connection (Optional)
 

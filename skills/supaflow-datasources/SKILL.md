@@ -266,6 +266,10 @@ supaflow datasources edit <identifier> --from current.env --json
 
 The `--output` flag on `datasources get` produces a complete env file with all properties, annotations, and current values pre-filled. Encrypted sensitive values are encoded as `enc:` prefixed strings that can be sent back as-is.
 
+Even for a single-field edit such as `host`, use the env-file export/edit/submit flow. Do NOT hand-edit the `datasources get --json` `configs` object and try to submit it; JSON encrypted envelopes are for inspection/pass-through context, not a supported `--from` input format.
+
+Use `--skip-test` when the updated connection is intentionally reachable from the Supaflow agent/runtime but not from the local CLI host, such as `host.docker.internal`, a container-only hostname, or a private/VPC hostname. The default edit test runs from the CLI host and can false-fail before saving; in that case the next agent-run sync or reachable-environment datasource test validates the connection.
+
 ## Schema Refresh
 
 Trigger a fresh schema discovery on the source:

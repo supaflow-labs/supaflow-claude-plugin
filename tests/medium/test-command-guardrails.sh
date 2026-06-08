@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../test-helpers.sh"
 
 COMMANDS="$SCRIPT_DIR/../../commands"
+SKILLS="$SCRIPT_DIR/../../skills"
 
 echo "=== Command guardrail tests ==="
 echo ""
@@ -42,6 +43,19 @@ assert_file_contains "$F" "prerequisites" "create-datasource: validates prerequi
 assert_file_contains "$F" "confirmed complete\|explicitly deferred" "create-datasource: gates on prerequisite confirmation"
 assert_file_contains "$F" "state is active\|state is \`active\`" "create-datasource: requires active state before pipeline readiness"
 assert_file_contains "$F" "datasources refresh" "create-datasource: teaches schema refresh before first pipeline creation"
+echo ""
+
+# --- edit-datasource.md ---
+echo "-- edit-datasource.md --"
+F="$COMMANDS/edit-datasource.md"
+assert_file_contains "$F" "env-file export/edit/submit flow" "edit-datasource: preserves env-file round-trip for single-field edits"
+assert_file_contains "$F" "Do NOT hand-edit.*datasources get --json.*configs" "edit-datasource: blocks hand-edited JSON config resubmits"
+assert_file_contains "$F" "Use this variant for agent-only/internal hostnames" "edit-datasource: documents skip-test for datasource edits"
+assert_file_contains "$F" "reachable from the Supaflow agent/runtime but not from the local CLI host" "edit-datasource: explains agent-only hostname false-fail"
+assert_file_contains "$F" "host\\.docker\\.internal" "edit-datasource: calls out host.docker.internal"
+F="$SKILLS/supaflow-datasources/SKILL.md"
+assert_file_contains "$F" "Do NOT hand-edit.*datasources get --json.*configs" "supaflow-datasources skill: blocks hand-edited JSON config resubmits"
+assert_file_contains "$F" "Use \`--skip-test\`.*Supaflow agent/runtime.*local CLI host" "supaflow-datasources skill: documents skip-test for agent-only hostnames"
 echo ""
 
 # --- check-job.md ---
