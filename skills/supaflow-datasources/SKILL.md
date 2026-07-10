@@ -114,7 +114,7 @@ Common types: `POSTGRES`, `SNOWFLAKE`, `S3`, `HUBSPOT`, `SALESFORCE`, `AIRTABLE`
 
 ### Env File Format
 
-The env file supports `${VAR}` references for secrets to avoid storing them in cleartext:
+The env file supports `${VAR}` references so a secret never has to be typed into the file at all:
 
 ```env
 host=db.example.com
@@ -124,7 +124,27 @@ username=${DB_USER}
 password=${DB_PASSWORD}
 ```
 
-`${VAR}` references are resolved from the current shell environment at create time. If a plaintext secret is present, the CLI auto-encrypts it on disk before submission (the file is rewritten with `enc:` prefixed values).
+`${VAR}` references are resolved from the current shell environment at create time.
+
+### How secrets are protected (read this before avoiding an export)
+
+**Sensitive values are never persisted in cleartext, anywhere.** A `BEFORE INSERT OR UPDATE`
+trigger on `public.datasources` (`encrypt_datasource_config`) encrypts every sensitive config
+field server-side, so the database only ever holds encrypted envelopes `{v, fp, data}`. The CLI
+holds no decryption key -- only the pipeline agent does.
+
+Three consequences worth internalizing, because agents routinely get this wrong:
+
+1. **`datasources get <id> --output <file>` is safe.** Values come back from the database as
+   envelopes and are written to the env file as `enc:<base64>`. Exporting an existing datasource
+   cannot put a plaintext secret on disk. Do not refuse to export on secret-hygiene grounds.
+2. **A plaintext secret you type into the file is auto-encrypted in place.** On
+   `datasources create` / `datasources edit`, any sensitive key whose value is not already
+   `enc:` or `${VAR}` is encrypted and the file is **rewritten** with the `enc:` value before
+   submission. Plaintext exists on disk only between you writing it and the command running.
+3. **A `${VAR}` value is resolved and sent over TLS, then encrypted by the trigger on write.**
+   It is not pre-encrypted client-side. This is identical to how the web form submits, and it is
+   not a leak -- but do not "fix" it by assuming the value is already an envelope.
 
 The `datasources create` command auto-encrypts plaintext secrets and tests the connection before saving:
 

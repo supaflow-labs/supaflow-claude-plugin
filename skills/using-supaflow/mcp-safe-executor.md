@@ -18,6 +18,8 @@ Destructive tools: `datasources_delete`, `pipelines_delete`, `schedules_delete`,
 
 Credential-bearing outputs: `datasources_get`, env-file exports, and some logs can include `configs`, encrypted secret blobs, token-like values, or other credential-shaped data. Never paste those values into chat. When reporting datasource details, use only safe fields: `name`, `api_name`, `id`, `state`, `connector_name`, `connector_type`, project linkage, counts, and non-secret capability summaries.
 
+That rule is about **chat hygiene, not disk hygiene**. Sensitive datasource fields are stored encrypted -- a `BEFORE INSERT OR UPDATE` trigger (`encrypt_datasource_config`) encrypts them server-side, and the CLI holds no decryption key. So `datasources_get` returns `enc:` envelopes, and `output_file` exports write those same envelopes. Writing an env-file export to disk is safe and is the intended way to edit a datasource: **do not refuse `output_file` on secret-hygiene grounds.** What you must not do is echo envelopes (or key fingerprints) into the transcript, because the transcript is durable and the blobs are noise.
+
 ## Required sequence for every non-read-only MCP call
 
 1. Read current state first with the narrowest read-only tool that proves the target exists.
