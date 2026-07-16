@@ -100,6 +100,7 @@ Use these commands for the corresponding user intents. In the terminal CLI path,
 | Diagnose a failed job | `/explain-job-failure` |
 | Sync a pipeline / run a sync | `/sync-pipeline` |
 | Schedule a pipeline | `/create-schedule` |
+| Run / manage a local Docker agent | `supaflow agent ...` CLI (or `agent_*` MCP tools); see the `supaflow-agents` skill |
 
 If the user's request spans multiple commands (e.g., "build a pipeline", "set up a pipeline from scratch"), **start with `/create-pipeline`** -- it checks for existing datasources and only needs `/create-datasource` if something is missing:
 
@@ -165,3 +166,4 @@ These skills contain background knowledge. Use them when you need connector deta
 - `supaflow-pipelines` -- pipeline setup, schema, and sync modes
 - `supaflow-jobs` -- look up job status, metrics, or logs
 - `supaflow-schedules` -- cron schedules and timezone handling
+- `supaflow-agents` -- local Docker agent lifecycle (start/enroll, resume, approval rules, re-enrollment)
