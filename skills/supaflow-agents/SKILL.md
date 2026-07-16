@@ -7,9 +7,14 @@ description: Manage a local Docker Supaflow agent from the CLI/MCP -- start (enr
 
 A private agent runs the user's pipelines inside their own network; only encrypted metadata reaches Supaflow Cloud. The `supaflow agent` command family (CLI >= 0.4.0) manages a local Docker agent end to end. MCP tools: `agent_start`, `agent_stop`, `agent_status`, `agent_logs`, `agent_remove`.
 
-## Availability gate (run FIRST)
+## Availability gate (run FIRST, per execution surface)
 
-These commands ship in CLI 0.4.0+. Before any agent operation, verify availability: `supaflow --version` >= 0.4.0, or the `agent_*` MCP tools present. If unavailable, the installed CLI predates this feature -- tell the user to upgrade (`npm install -g @getsupaflow/cli`) and STOP. Do NOT improvise raw docker commands as a fallback; the deployment wizard on Settings > Agents is the supported alternative.
+These commands ship in CLI 0.4.0+. The check depends on the active Supaflow surface (see the setup gate):
+
+- **MCP path active** (`mcp__supaflow__*` tools present): require the `agent_*` tools specifically. An already-running MCP server can predate the agent tools even when the installed CLI is current, and the MCP path forbids falling back to `Bash(supaflow *)`. If `agent_*` are absent: tell the user to upgrade the host CLI (`npm install -g @getsupaflow/cli`, 0.4.0+), restart the MCP client/session so the server reloads, and STOP.
+- **Terminal CLI path** (no MCP tools): `supaflow --version` >= 0.4.0 establishes availability. If older: tell the user to upgrade and STOP.
+
+Never improvise raw docker commands as a fallback on either surface; the deployment wizard on Settings > Agents is the supported alternative.
 
 ## Hard rules
 
