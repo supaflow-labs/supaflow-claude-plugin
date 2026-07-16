@@ -7,6 +7,10 @@ description: Manage a local Docker Supaflow agent from the CLI/MCP -- start (enr
 
 A private agent runs the user's pipelines inside their own network; only encrypted metadata reaches Supaflow Cloud. The `supaflow agent` command family (CLI >= 0.4.0) manages a local Docker agent end to end. MCP tools: `agent_start`, `agent_stop`, `agent_status`, `agent_logs`, `agent_remove`.
 
+## Availability gate (run FIRST)
+
+These commands ship in CLI 0.4.0+. Before any agent operation, verify availability: `supaflow --version` >= 0.4.0, or the `agent_*` MCP tools present. If unavailable, the installed CLI predates this feature -- tell the user to upgrade (`npm install -g @getsupaflow/cli`) and STOP. Do NOT improvise raw docker commands as a fallback; the deployment wizard on Settings > Agents is the supported alternative.
+
 ## Hard rules
 
 1. **Approval changes tenant job routing.** Once a private agent is approved, the tenant's jobs run on it. NEVER pass `approve=true` (or run `agent start --approve`) unless the user explicitly asked to approve/activate the agent. Default to leaving it pending and telling the user to approve on Settings > Agents (or to rerun with `--approve`).
@@ -27,7 +31,7 @@ Useful flags: `--name <container>` (parallel agents; volume is `<name>-data`), `
 
 ## Diagnosing
 
-- `agent status` joins docker state with the server record: `lifecycle_status` (registered / pending_approval / approved / active / suspended / deactivated), `connectivity_status`, `last_heartbeat_at`.
+- `agent status` joins docker state with the server record: `lifecycle_status` (registered / pending_approval / approved / active / suspended / terminated / deactivated), `connectivity_status`, `last_heartbeat_at`.
 - Container running but lifecycle `registered` -> it is waiting for approval, not broken.
 - `agent logs --tail 200` for boot/registration errors; a 403 "not active (status: deactivated)" means the agent was deactivated server-side -- re-enroll with `remove --purge` + `start`.
 
