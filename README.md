@@ -1,6 +1,6 @@
 # Supaflow Plugin for Claude Code
 
-Official Claude Code plugin for [Supaflow](https://www.supa-flow.io), the unified data movement platform. Manage datasources, pipelines, schedules, and job monitoring through natural language backed by the host-side Supaflow MCP server in Claude Desktop, or by the `@getsupaflow/cli` in terminal Claude Code.
+Official Claude Code plugin for [Supaflow](https://www.supa-flow.io), the unified data movement platform. Manage datasources, pipelines, schedules, job monitoring, and local Docker agents through natural language backed by the host-side Supaflow MCP server in Claude Desktop, or by the `@getsupaflow/cli` in terminal Claude Code.
 
 ## Install
 
@@ -50,6 +50,8 @@ The plugin is organized in four layers:
 | `/sync-pipeline` | Trigger a sync and poll for completion |
 | `/create-schedule` | Schedule recurring pipeline syncs |
 
+Local Docker agent operations do not use a slash command. The `supaflow-agents` skill routes them to `supaflow agent start|stop|status|logs|remove` in terminal Claude Code or the corresponding `agent_*` MCP tools in Claude Desktop.
+
 ## Domain Skills
 
 | Skill | Content |
@@ -58,6 +60,7 @@ The plugin is organized in four layers:
 | `supaflow-pipelines` | Pipeline setup, schema, and sync modes |
 | `supaflow-jobs` | Look up job status, metrics, or logs |
 | `supaflow-schedules` | Cron schedules and timezone handling |
+| `supaflow-agents` | Local Docker agent enrollment, resume, status, logs, approval, and safe re-enrollment |
 
 Domain skills are loaded automatically when a command needs them. They are not invoked directly.
 
