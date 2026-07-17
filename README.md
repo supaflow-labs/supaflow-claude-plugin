@@ -30,7 +30,7 @@ The plugin is organized in four layers:
 
 **`using-supaflow` skill** - Injected at session start. Establishes the setup gate, chooses Desktop MCP vs terminal CLI, and routes incoming requests to the correct workflow or domain skill.
 
-**Desktop MCP server** - Ships inside `@getsupaflow/cli` (v0.4.0+) as `supaflow mcp`, registered host-side in `claude_desktop_config.json` (see Setup). It exposes `mcp__supaflow__*` tools by shelling out to the host `supaflow` CLI, so Claude Desktop uses the host CLI and `~/.supaflow/config.json` instead of the cowork VM. Guided tools return structured JSON and keep host-side temp files inside MCP.
+**Desktop MCP server** - Ships inside `@getsupaflow/cli` (v0.4.1+) as `supaflow mcp`, registered host-side in `claude_desktop_config.json` (see Setup). It exposes `mcp__supaflow__*` tools by shelling out to the host `supaflow` CLI, so Claude Desktop uses the host CLI and `~/.supaflow/config.json` instead of the cowork VM. Guided tools return structured JSON and keep host-side temp files inside MCP.
 
 **Commands** - Terminal CLI execution layer and workflow specs. Each command maps to one user-facing workflow and preserves tested guardrails for confirmations, parser contracts, and destructive actions.
 
@@ -88,7 +88,7 @@ Then restart Claude Desktop. The server reuses the host's `~/.supaflow/config.js
 When MCP tools are not available, the plugin falls back to CLI checks. On first session after install, the plugin verifies:
 
 - Node.js 18+ is installed
-- Supaflow CLI v0.4.0+ is installed (`npm install -g @getsupaflow/cli`)
+- Supaflow CLI v0.4.1+ is installed (`npm install -g @getsupaflow/cli`)
 - CLI is authenticated with a valid API key (`supaflow auth login`)
 - A workspace is selected (`supaflow workspaces select`)
 
