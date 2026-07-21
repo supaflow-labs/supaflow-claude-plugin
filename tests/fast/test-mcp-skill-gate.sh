@@ -9,6 +9,7 @@ SETUP="$PLUGIN_ROOT/skills/using-supaflow/setup-preamble.md"
 ENTRY="$PLUGIN_ROOT/skills/using-supaflow/SKILL.md"
 SAFE="$PLUGIN_ROOT/skills/using-supaflow/mcp-safe-executor.md"
 WORKFLOWS="$PLUGIN_ROOT/skills/using-supaflow/mcp-workflows.md"
+AGENTS="$PLUGIN_ROOT/skills/supaflow-agents/SKILL.md"
 
 assert_file_contains "$SETUP" "Desktop MCP path" "setup gate: has Desktop MCP path"
 assert_file_contains "$SETUP" "mcp__supaflow__auth_status" "setup gate: detects MCP auth tool"
@@ -36,6 +37,12 @@ assert_file_contains "$SAFE" "Credential-bearing outputs" "safe executor: has cr
 assert_file_contains "$SAFE" "Never paste those values into chat" "safe executor: blocks secret output paste"
 assert_file_contains "$SAFE" "pipelines_prepare_create.*pipelines_create_from_plan" "safe executor: prefers guided pipeline creation"
 assert_file_contains "$SAFE" "pass \`confirmed: true\` only after" "safe executor: confirmed true requires final confirmation"
+assert_file_contains "$SAFE" "agent_upgrade" "safe executor: classifies agent upgrade"
+assert_file_contains "$SAFE" "Before \`mcp__supaflow__agent_upgrade\`" "safe executor: confirms agent upgrade before replacement"
+
+assert_file_contains "$AGENTS" "mcp__supaflow__agent_upgrade" "agent skill: gates MCP upgrade capability"
+assert_file_contains "$AGENTS" "supaflow agent upgrade --help" "agent skill: gates terminal upgrade capability"
+assert_file_contains "$AGENTS" "attempts to restore the previous immutable image" "agent skill: documents safe rollback"
 
 assert_file_contains "$WORKFLOWS" "Create pipeline" "mcp workflows: has guided create-pipeline workflow"
 assert_file_contains "$WORKFLOWS" "authoritative Desktop MCP workflows" "mcp workflows: authoritative in Desktop MCP mode"
