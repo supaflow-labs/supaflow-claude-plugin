@@ -1,18 +1,18 @@
 ---
 name: supaflow-agents
-description: Manage a local Docker Supaflow agent from the CLI/MCP -- start (enroll or resume), stop, status, logs, remove. Use when the user wants to run pipelines on their own machine or network via a private agent, deploy/install a local agent, check why their agent is offline, or re-enroll after revoking an agent.
+description: Manage a local Docker Supaflow agent from the CLI/MCP -- start (enroll or resume), upgrade, stop, status, logs, remove. Use when the user wants to run pipelines on their own machine or network via a private agent, deploy/install or upgrade a local agent, check why their agent is offline, or re-enroll after revoking an agent.
 ---
 
 # Supaflow Local Docker Agents
 
-A private agent runs the user's pipelines inside their own network; only encrypted metadata reaches Supaflow Cloud. The `supaflow agent` command family (CLI >= 0.4.0) manages a local Docker agent end to end. MCP tools: `agent_start`, `agent_stop`, `agent_status`, `agent_logs`, `agent_remove`.
+A private agent runs the user's pipelines inside their own network; only encrypted metadata reaches Supaflow Cloud. The `supaflow agent` command family manages a local Docker agent end to end. MCP tools: `agent_start`, `agent_upgrade`, `agent_stop`, `agent_status`, `agent_logs`, `agent_remove`.
 
 ## Availability gate (run FIRST, per execution surface)
 
-These commands ship in CLI 0.4.0+. The check depends on the active Supaflow surface (see the setup gate):
+The plugin requires CLI 0.5.0+ for all agent lifecycle operations. The agent-upgrade flow must still be checked by capability so a stale MCP server cannot be mistaken for the current one. The check depends on the active Supaflow surface (see the setup gate):
 
-- **MCP path active** (`mcp__supaflow__*` tools present): require the `agent_*` tools specifically. An already-running MCP server can predate the agent tools even when the installed CLI is current, and the MCP path forbids falling back to `Bash(supaflow *)`. If `agent_*` are absent: tell the user to upgrade the host CLI (`npm install -g @getsupaflow/cli`, 0.4.0+), restart the MCP client/session so the server reloads, and STOP.
-- **Terminal CLI path** (no MCP tools): `supaflow --version` >= 0.4.0 establishes availability. If older: tell the user to upgrade and STOP.
+- **MCP path active** (`mcp__supaflow__*` tools present): require the exact tool for the requested operation. In particular, do not attempt an upgrade unless `mcp__supaflow__agent_upgrade` is present. An already-running MCP server can predate newly installed agent tools. If the required tool is absent: tell the user to upgrade the host CLI (`npm install -g @getsupaflow/cli`) and restart the MCP client/session so the server reloads, then STOP.
+- **Terminal CLI path** (no MCP tools): the setup gate establishes CLI 0.5.0+. Before an upgrade, also run `supaflow agent upgrade --help`; if the capability check fails, tell the user to upgrade the CLI and STOP.
 
 Never improvise raw docker commands as a fallback on either surface; the deployment wizard on Settings > Agents is the supported alternative.
 
@@ -22,6 +22,7 @@ Never improvise raw docker commands as a fallback on either surface; the deploym
 2. **`remove --purge` is destructive and identity-losing.** It deletes the identity volume; the next start enrolls a brand-new agent that needs re-approval, and the old agent record must be deactivated on Settings > Agents. Confirm with the user before purging.
 3. **A kept identity volume outranks a new registration token** (deliberate: restart policies re-run containers with a spent token in their env). To re-enroll after revoking an agent, `agent remove --purge` FIRST -- do not mint tokens hoping they win.
 4. **Enrollment requires an org:admin API key.** If `agent_start` fails with an admin error, tell the user to use an API key created by an org admin; do not retry with workarounds.
+5. **An upgrade stops and replaces the current container.** Read `agent_status` first, show the resolved container name and requested image, explain the brief interruption, and get explicit user confirmation before `agent_upgrade` or `supaflow agent upgrade`. MCP approval is not the workflow confirmation. Never use `pull=false` / `--no-pull` unless the user explicitly wants an image already present on the host.
 
 ## What `agent start` does
 
@@ -33,6 +34,19 @@ Doctor preflight (docker binary, daemon, ~5 GB free disk, image, container/volum
 - Corrupt identity in the volume -> fails with recovery guidance (`remove --purge`); it never silently re-enrolls.
 
 Useful flags: `--name <container>` (parallel agents; volume is `<name>-data`), `--image <ref>`, `--api-url <url>` (local dev app), `--timeout <seconds>`.
+
+If an existing container uses a different image than `agent start` requested, `start` refuses to replace it. Use the upgrade workflow instead.
+
+## What `agent upgrade` does (CLI 0.5.0+)
+
+Use `agent_upgrade` on MCP or `supaflow agent upgrade` in the terminal. It:
+
+- Requires the existing container and its named identity/keystore volume.
+- Preserves the container's `SUPAFLOW_API_URL`; for a legacy container without that value, pass `api_url` / `--api-url` explicitly.
+- Pulls the requested image and validates the persisted identity before stopping the current container.
+- Starts the replacement and checks its Docker startup state. If replacement startup fails, it removes the failed container and attempts to restore the previous immutable image while keeping the identity volume intact.
+
+Useful flags: `--name <container>`, `--image <ref>`, `--api-url <url>`, `--no-pull` (only for an image already present locally). After the operation, re-read `agent_status` and report the verified container and agent state.
 
 ## Diagnosing
 

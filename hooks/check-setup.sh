@@ -14,7 +14,7 @@ if [ -z "${_SUPAFLOW_HOOK_TEST:-}" ]; then
   fi
 fi
 
-MIN_CLI_VERSION="0.4.1"
+MIN_CLI_VERSION="0.5.0"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

@@ -166,4 +166,4 @@ These skills contain background knowledge. Use them when you need connector deta
 - `supaflow-pipelines` -- pipeline setup, schema, and sync modes
 - `supaflow-jobs` -- look up job status, metrics, or logs
 - `supaflow-schedules` -- cron schedules and timezone handling
-- `supaflow-agents` -- local Docker agent lifecycle (start/enroll, resume, approval rules, re-enrollment)
+- `supaflow-agents` -- local Docker agent lifecycle (start/enroll, safe upgrade on CLI 0.5.0+, resume, approval rules, re-enrollment)

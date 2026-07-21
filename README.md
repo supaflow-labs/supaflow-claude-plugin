@@ -30,7 +30,7 @@ The plugin is organized in four layers:
 
 **`using-supaflow` skill** - Injected at session start. Establishes the setup gate, chooses Desktop MCP vs terminal CLI, and routes incoming requests to the correct workflow or domain skill.
 
-**Desktop MCP server** - Ships inside `@getsupaflow/cli` (v0.4.1+) as `supaflow mcp`, registered host-side in `claude_desktop_config.json` (see Setup). It exposes `mcp__supaflow__*` tools by shelling out to the host `supaflow` CLI, so Claude Desktop uses the host CLI and `~/.supaflow/config.json` instead of the cowork VM. Guided tools return structured JSON and keep host-side temp files inside MCP.
+**Desktop MCP server** - Ships inside `@getsupaflow/cli` (v0.5.0+) as `supaflow mcp`, registered host-side in `claude_desktop_config.json` (see Setup). It exposes `mcp__supaflow__*` tools by shelling out to the host `supaflow` CLI, so Claude Desktop uses the host CLI and `~/.supaflow/config.json` instead of the cowork VM. Guided tools return structured JSON and keep host-side temp files inside MCP.
 
 **Commands** - Terminal CLI execution layer and workflow specs. Each command maps to one user-facing workflow and preserves tested guardrails for confirmations, parser contracts, and destructive actions.
 
@@ -50,7 +50,7 @@ The plugin is organized in four layers:
 | `/sync-pipeline` | Trigger a sync and poll for completion |
 | `/create-schedule` | Schedule recurring pipeline syncs |
 
-Local Docker agent operations do not use a slash command. The `supaflow-agents` skill routes them to `supaflow agent start|stop|status|logs|remove` in terminal Claude Code or the corresponding `agent_*` MCP tools in Claude Desktop.
+Local Docker agent operations do not use a slash command. The `supaflow-agents` skill routes them to `supaflow agent start|upgrade|stop|status|logs|remove` in terminal Claude Code or the corresponding `agent_*` MCP tools in Claude Desktop. The upgrade flow requires CLI 0.5.0+ and explicit confirmation because it stops and replaces the running container, while preserving its identity volume and automatically attempting rollback if the replacement does not start successfully.
 
 ## Domain Skills
 
@@ -60,7 +60,7 @@ Local Docker agent operations do not use a slash command. The `supaflow-agents` 
 | `supaflow-pipelines` | Pipeline setup, schema, and sync modes |
 | `supaflow-jobs` | Look up job status, metrics, or logs |
 | `supaflow-schedules` | Cron schedules and timezone handling |
-| `supaflow-agents` | Local Docker agent enrollment, resume, status, logs, approval, and safe re-enrollment |
+| `supaflow-agents` | Local Docker agent enrollment, safe upgrades (CLI 0.5.0+), resume, status, logs, approval, and re-enrollment |
 
 Domain skills are loaded automatically when a command needs them. They are not invoked directly.
 
@@ -68,7 +68,7 @@ Domain skills are loaded automatically when a command needs them. They are not i
 
 ### Claude Desktop
 
-Desktop usage should use the host-side MCP server that ships with the CLI (`@getsupaflow/cli` 0.4.0+). Register it in `claude_desktop_config.json`; do not use a plugin `.mcp.json` for Desktop, because that runs inside the cowork VM where the host CLI and `~/.supaflow/config.json` are not visible.
+Desktop usage should use the host-side MCP server that ships with the CLI (`@getsupaflow/cli` 0.5.0+). Register it in `claude_desktop_config.json`; do not use a plugin `.mcp.json` for Desktop, because that runs inside the cowork VM where the host CLI and `~/.supaflow/config.json` are not visible.
 
 ```json
 {
@@ -88,7 +88,7 @@ Then restart Claude Desktop. The server reuses the host's `~/.supaflow/config.js
 When MCP tools are not available, the plugin falls back to CLI checks. On first session after install, the plugin verifies:
 
 - Node.js 18+ is installed
-- Supaflow CLI v0.4.1+ is installed (`npm install -g @getsupaflow/cli`)
+- Supaflow CLI v0.5.0+ is installed (`npm install -g @getsupaflow/cli`)
 - CLI is authenticated with a valid API key (`supaflow auth login`)
 - A workspace is selected (`supaflow workspaces select`)
 
