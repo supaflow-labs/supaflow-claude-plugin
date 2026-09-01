@@ -14,6 +14,16 @@ d = json.load(sys.stdin)
 if 'error' in d: print(d['error']['message']); sys.exit(1)
 ```
 
+### Job cancellation
+
+`supaflow jobs cancel <job-id> --json` accepts a UUID and returns:
+
+```json
+{ "id": "<job-id>", "job_status": "cancelled" }
+```
+
+The command makes one atomic `cancel_job(p_job_id)` RPC call after local UUID validation. The RPC handles authorization, workspace access, active-state validation, cancellation, and the actor-stamped status message. A terminal, inaccessible, or missing job returns the same generic CLI error.
+
 ## Global Flags
 
 | Flag | Description |

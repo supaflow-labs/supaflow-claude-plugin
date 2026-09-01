@@ -60,6 +60,24 @@ Use for: "check job", "latest sync", "is the pipeline done", "what happened to j
 
 Terminal statuses: `completed`, `completed_with_warning`, `failed`, `cancelled`, `timed_out`.
 
+## Cancel job
+
+Use for: "cancel job", "stop job", "cancel this sync".
+
+1. Run the setup gate. Continue only after `mcp__supaflow__auth_status` passes.
+2. Require the exact `mcp__supaflow__jobs_cancel` capability. If it is missing, tell the user to upgrade the host Supaflow CLI/MCP server and restart the session, then STOP.
+3. Resolve the job id:
+   - If the input is a UUID, use it directly.
+   - Otherwise call `mcp__supaflow__pipelines_list` with `limit: 200`, match the pipeline by `name`, `api_name`, or `id`, then call `mcp__supaflow__jobs_list` with `filter: ["pipeline=<pipeline-id>"]` and `limit: 1`.
+   - If the pipeline list is truncated (`total > data.length`) and no match was found, page with `offset` before saying not found.
+4. Call `mcp__supaflow__jobs_status` with the resolved job id.
+5. Continue only if `job_status` is `queued`, `picked`, or `running`. If it is terminal, report the current state and STOP without calling cancellation.
+6. Present the exact `id`, `job_status`, and `status_message`. Explain that cancellation stops further processing, ask exactly one explicit confirmation question, and wait. MCP approval is not workflow confirmation.
+7. After confirmation, call `mcp__supaflow__jobs_cancel` with the job id. Parse only `id` and `job_status`; success returns `job_status: "cancelled"`.
+8. Call `mcp__supaflow__jobs_status` again. Report the verified database `job_status` and actor-stamped `status_message`; the agent process may observe the cancellation asynchronously.
+
+The cancellation tool itself invokes one atomic RPC. The surrounding status reads are for user confirmation and verification, not validation inside the command.
+
 ## Explain job failure
 
 Use for: "why did this job fail", "diagnose job X", "explain the failed sync".

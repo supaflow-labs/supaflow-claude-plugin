@@ -1,15 +1,15 @@
 ---
 name: supaflow-jobs
-description: Look up job status, metrics, or logs
+description: Look up job status, metrics, or logs, and safely cancel an active job
 ---
 
-# Supaflow Job Monitoring
+# Supaflow Jobs
 
-**This is a reference skill, not a workflow.** For job inspection, use `/check-job` or `/explain-job-failure` commands. This skill provides background knowledge about job status, per-object metrics, and log analysis.
+For job inspection, use `/check-job` or `/explain-job-failure`. This skill also defines the guarded workflow for job cancellation and provides background knowledge about job status, per-object metrics, and log analysis.
 
 Jobs are async execution records created by pipeline syncs, datasource tests, and schema refreshes. Every `pipelines sync`, `datasources create`, `datasources test`, and `datasources refresh` command creates a job.
 
-All CLI commands require authentication and an active workspace.
+Job inspection workflows require authentication and an active workspace. The direct cancel command requires authentication; `cancel_job(p_job_id)` resolves access through job RLS, so it does not perform a separate selected-workspace validation query.
 
 ## Listing Jobs
 
@@ -135,6 +135,26 @@ supaflow jobs logs <job-id> --json
 
 Logs contain detailed information about errors, warnings, and execution progress. Check logs first when diagnosing failures.
 
+## Cancelling a Job
+
+Cancellation is destructive and requires an explicit user confirmation. An MCP approval prompt is tool approval only and does not replace this workflow confirmation.
+
+Before starting the cancellation workflow, verify that the active execution surface supports it:
+
+- Desktop MCP: require the exact `mcp__supaflow__jobs_cancel` tool. If it is missing, tell the user to upgrade the host Supaflow CLI/MCP server and restart the session, then STOP.
+- Terminal CLI: run `supaflow jobs cancel --help`. If the command is missing, tell the user to upgrade the Supaflow CLI, then STOP.
+
+Then follow this sequence:
+
+1. Read the job with `mcp__supaflow__jobs_status` or `supaflow jobs status <job-id> --json`.
+2. Continue only when `job_status` is `queued`, `picked`, or `running`. A terminal job cannot be cancelled.
+3. Show the exact job `id`, `job_status`, and `status_message`. Explain that cancellation stops further processing and ask exactly one explicit confirmation question.
+4. After confirmation, call `mcp__supaflow__jobs_cancel` or run `supaflow jobs cancel <job-id> --json`.
+5. Parse exactly `id` and `job_status`. Successful cancellation returns `{ "id": "<job-id>", "job_status": "cancelled" }`.
+6. Re-read `jobs status` and report the verified database state. The agent process may observe the cancellation asynchronously, but the job status and actor-stamped status message are updated atomically by `cancel_job(p_job_id)`.
+
+The cancel command itself makes one cancellation RPC call. The status reads above exist for user confirmation and post-action verification; they are not command-side validation calls. The RPC owns authorization, workspace access, active-state validation, the state transition, and the actor-stamped status message. A false result is intentionally reported generically because the job may be terminal, inaccessible, or missing.
+
 ## Job Statuses
 
 | Status | Meaning |
@@ -229,4 +249,5 @@ Job commands use the job UUID (returned by sync, create, test, and refresh comma
 ```bash
 supaflow jobs get 13cfe303-c67e-4a5b-8f9d-1e2f3a4b5c6d --json
 supaflow jobs logs 13cfe303-c67e-4a5b-8f9d-1e2f3a4b5c6d --json
+supaflow jobs cancel 13cfe303-c67e-4a5b-8f9d-1e2f3a4b5c6d --json
 ```

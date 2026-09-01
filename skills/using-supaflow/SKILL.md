@@ -54,6 +54,7 @@ These rules are non-negotiable. Violating any of them is a bug.
 13. **Read `mcp-safe-executor.md` before any non-read-only MCP tool.** Follow its read-confirm-call-verify sequence.
 14. **Never paste credential material.** Do not quote datasource `configs`, encrypted secret blobs, env file contents, passwords, tokens, API keys, or credential-shaped values. Summarize only safe identifiers and capability fields.
 15. **Dependency installs require explicit confirmation** (see the setup gate). Never run `npm install` (or any environment-mutating install/upgrade) silently. Offer it, wait for an explicit yes, then run it. Never auto-install Node. Never paste an API key into chat -- have the user run `supaflow auth login` themselves.
+16. **Job cancellation requires explicit confirmation.** Read the current job status, present the exact job id/status/message and cancellation impact, then wait for an unambiguous yes before calling `jobs_cancel` or `supaflow jobs cancel`. MCP approval is not workflow confirmation. Re-read job status afterward.
 
 ## Red Flags
 
@@ -98,6 +99,7 @@ Use these commands for the corresponding user intents. In the terminal CLI path,
 | Delete a pipeline | `/delete-pipeline` |
 | Check job status or latest sync | `/check-job` |
 | Diagnose a failed job | `/explain-job-failure` |
+| Cancel an active job | `supaflow jobs cancel <job-id>` CLI or `jobs_cancel` MCP tool; follow the `supaflow-jobs` skill |
 | Sync a pipeline / run a sync | `/sync-pipeline` |
 | Schedule a pipeline | `/create-schedule` |
 | Run / manage a local Docker agent | `supaflow agent ...` CLI (or `agent_*` MCP tools); see the `supaflow-agents` skill |
@@ -129,6 +131,10 @@ These are the correct JSON field names for each CLI output. Never invent alterna
 
 **`jobs status --json`:** `id`, `job_status`, `status_message`, `job_response`
 - NEVER use: `phase`, `duration`, `completed_at`, `progress`
+
+**`jobs cancel --json`:** `id`, `job_status`
+- On success, `job_status` is `cancelled`.
+- The command accepts only a job UUID and makes one atomic cancellation RPC call.
 
 **`jobs get --json`:** `execution_duration_ms`, `ended_at`, `job_response`, `object_details`
 - NEVER use: `duration`, `completed_at`, `objects`, `rows_read`
@@ -164,6 +170,6 @@ These skills contain background knowledge. Use them when you need connector deta
 
 - `supaflow-datasources` -- connectors, credentials, and catalog
 - `supaflow-pipelines` -- pipeline setup, schema, and sync modes
-- `supaflow-jobs` -- look up job status, metrics, or logs
+- `supaflow-jobs` -- look up job status, metrics, or logs, and safely cancel an active job
 - `supaflow-schedules` -- cron schedules and timezone handling
 - `supaflow-agents` -- local Docker agent lifecycle (start/enroll, safe upgrade on CLI 0.5.0+, resume, approval rules, re-enrollment)

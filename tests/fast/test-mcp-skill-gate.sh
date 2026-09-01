@@ -10,6 +10,7 @@ ENTRY="$PLUGIN_ROOT/skills/using-supaflow/SKILL.md"
 SAFE="$PLUGIN_ROOT/skills/using-supaflow/mcp-safe-executor.md"
 WORKFLOWS="$PLUGIN_ROOT/skills/using-supaflow/mcp-workflows.md"
 AGENTS="$PLUGIN_ROOT/skills/supaflow-agents/SKILL.md"
+JOBS="$PLUGIN_ROOT/skills/supaflow-jobs/SKILL.md"
 
 assert_file_contains "$SETUP" "Desktop MCP path" "setup gate: has Desktop MCP path"
 assert_file_contains "$SETUP" "mcp__supaflow__auth_status" "setup gate: detects MCP auth tool"
@@ -39,10 +40,17 @@ assert_file_contains "$SAFE" "pipelines_prepare_create.*pipelines_create_from_pl
 assert_file_contains "$SAFE" "pass \`confirmed: true\` only after" "safe executor: confirmed true requires final confirmation"
 assert_file_contains "$SAFE" "agent_upgrade" "safe executor: classifies agent upgrade"
 assert_file_contains "$SAFE" "Before \`mcp__supaflow__agent_upgrade\`" "safe executor: confirms agent upgrade before replacement"
+assert_file_contains "$SAFE" "Destructive tools:.*jobs_cancel" "safe executor: classifies job cancellation as destructive"
+assert_file_contains "$SAFE" "Before \`mcp__supaflow__jobs_cancel\`" "safe executor: confirms job cancellation before call"
 
 assert_file_contains "$AGENTS" "mcp__supaflow__agent_upgrade" "agent skill: gates MCP upgrade capability"
 assert_file_contains "$AGENTS" "supaflow agent upgrade --help" "agent skill: gates terminal upgrade capability"
 assert_file_contains "$AGENTS" "attempts to restore the previous immutable image" "agent skill: documents safe rollback"
+
+assert_file_contains "$JOBS" "mcp__supaflow__jobs_cancel" "job skill: gates MCP cancellation capability"
+assert_file_contains "$JOBS" "supaflow jobs cancel --help" "job skill: gates terminal cancellation capability"
+assert_file_contains "$JOBS" "supaflow jobs cancel <job-id> --json" "job skill: documents CLI cancellation"
+assert_file_contains "$JOBS" "one cancellation RPC call" "job skill: preserves single-call command contract"
 
 assert_file_contains "$WORKFLOWS" "Create pipeline" "mcp workflows: has guided create-pipeline workflow"
 assert_file_contains "$WORKFLOWS" "authoritative Desktop MCP workflows" "mcp workflows: authoritative in Desktop MCP mode"
@@ -65,6 +73,9 @@ assert_file_contains "$WORKFLOWS" "Trust \`verification\` over the create-respon
 assert_file_contains "$WORKFLOWS" "Check job status" "mcp workflows: has check-job workflow"
 assert_file_contains "$WORKFLOWS" "mcp__supaflow__jobs_status" "mcp workflows: uses jobs_status"
 assert_file_contains "$WORKFLOWS" "If the list result is truncated" "mcp workflows: pages truncated pipeline lists"
+assert_file_contains "$WORKFLOWS" "Cancel job" "mcp workflows: has cancel-job workflow"
+assert_file_contains "$WORKFLOWS" "mcp__supaflow__jobs_cancel" "mcp workflows: uses jobs_cancel"
+assert_file_contains "$WORKFLOWS" "MCP approval is not workflow confirmation" "mcp workflows: requires cancellation confirmation"
 assert_file_contains "$WORKFLOWS" "Explain job failure" "mcp workflows: has explain-failure workflow"
 assert_file_contains "$WORKFLOWS" "Do not paste the full log" "mcp workflows: blocks full-log dump"
 
