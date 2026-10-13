@@ -117,12 +117,24 @@ for (const entry of marketplace.plugins) {
       : { command: 'supaflow', args: ['mcp'] });
   });
   if (entry.name === 'supaflow') {
+    check('hosted: directory icon and privacy policy are present', () => {
+      assert.equal(manifest.privacyPolicyUrl, 'https://www.supa-flow.io/legal/privacy-policy');
+      assert.equal(manifest.icon, '.claude-plugin/icon.png');
+      const icon = fs.readFileSync(path.join(root, manifest.icon));
+      assert(icon.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])));
+      assert.equal(icon.toString('ascii', 12, 16), 'IHDR');
+      const width = icon.readUInt32BE(16);
+      assert.equal(width, icon.readUInt32BE(20));
+      assert(width >= 512 && width <= 2048);
+      assert(icon.length < 2 * 1024 * 1024);
+    });
     check('hosted: no local runtime, scripts, hooks, or agent skill', () => {
       for (const component of ['hooks', 'bin', 'scripts', 'skills/supaflow-agents']) {
         assert(!fs.existsSync(path.join(root, component)), `local component: ${component}`);
       }
       for (const file of files) {
-        assert(file.endsWith('.md') || file.endsWith('.json') || path.basename(file) === 'LICENSE',
+        assert(file.endsWith('.md') || file.endsWith('.json') || path.basename(file) === 'LICENSE'
+          || file === path.join(root, manifest.icon),
           `unexpected executable/asset: ${file}`);
       }
     });
