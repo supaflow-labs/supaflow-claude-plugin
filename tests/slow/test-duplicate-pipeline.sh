@@ -5,7 +5,7 @@ source "$SCRIPT_DIR/../test-helpers.sh"
 
 echo "Testing /create-pipeline duplicate handling..."
 
-output=$(run_claude "/create-pipeline" 300)
+output=$(run_claude "/supaflow-code:create-pipeline" 300)
 
 assert_contains "$output" "pipelines list\|existing pipeline\|already" "checks for existing pipelines"
 

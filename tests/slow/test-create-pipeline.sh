@@ -6,7 +6,7 @@ source "$SCRIPT_DIR/../test-helpers.sh"
 echo "Testing /create-pipeline workflow..."
 # Requires: Claude Code CLI, API key, Supaflow auth
 
-output=$(run_claude "/create-pipeline" 300)
+output=$(run_claude "/supaflow-code:create-pipeline" 300)
 
 assert_contains "$output" "datasources list\|existing datasource" "lists datasources first"
 assert_contains "$output" "pipelines init\|initializ" "runs pipelines init"

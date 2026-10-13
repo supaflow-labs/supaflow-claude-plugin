@@ -1,18 +1,25 @@
 {
   "name": "supaflow",
   "metadata": {
-    "description": "Official Supaflow (supa-flow.io) plugin marketplace for data pipeline management in Claude Code"
+    "description": "Supaflow plugins: hosted MCP workflows and Claude Code local CLI capabilities"
   },
   "owner": {
-    "name": "supaflow-labs",
+    "name": "Supaflow, LLC",
     "email": "support@supa-flow.io"
   },
   "plugins": [
     {
       "name": "supaflow",
-      "description": "Official Supaflow (supa-flow.io) plugin for ETL/ELT pipelines, connectors, warehouse syncs, schedules, and job monitoring.",
+      "description": "Build, run, monitor, and troubleshoot data pipelines through the hosted Supaflow MCP connection. No local CLI required.",
+      "category": "productivity",
+      "source": "./plugins/supaflow",
+      "homepage": "https://www.supa-flow.io"
+    },
+    {
+      "name": "supaflow-code",
+      "description": "Claude Code workflows with the local Supaflow CLI, CLI-backed MCP tools, and private-agent lifecycle support. Install from GitHub.",
       "category": "development",
-      "source": "./",
+      "source": "./plugins/supaflow-code",
       "homepage": "https://www.supa-flow.io"
     }
   ]

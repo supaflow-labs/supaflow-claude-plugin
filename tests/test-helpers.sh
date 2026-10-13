@@ -7,8 +7,11 @@ set -euo pipefail
 TESTS_PASSED=0
 TESTS_FAILED=0
 
-# Plugin root derived from script location (parent of tests/)
-PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Existing CLI guardrail tests target the Code package. Hosted tests use MCP_PLUGIN_ROOT.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CODE_PLUGIN_ROOT="$REPO_ROOT/plugins/supaflow-code"
+MCP_PLUGIN_ROOT="$REPO_ROOT/plugins/supaflow"
+PLUGIN_ROOT="$CODE_PLUGIN_ROOT"
 
 # assert_contains "output" "pattern" "test name"
 assert_contains() {
@@ -41,6 +44,7 @@ assert_not_contains() {
 export -f assert_not_contains
 
 # assert_json_has_field "file" "python_expr" "test name"
+# Key lookup proves presence even for null values; explicit boolean checks must be true.
 assert_json_has_field() {
   local file="$1"
   local python_expr="$2"
@@ -49,8 +53,8 @@ assert_json_has_field() {
 import json, sys
 with open('$file') as f:
     data = json.load(f)
-_ = $python_expr
-sys.exit(0)
+result = $python_expr
+sys.exit(1 if isinstance(result, bool) and not result else 0)
 " 2>/dev/null; then
     echo "PASS: $test_name"
     TESTS_PASSED=$((TESTS_PASSED + 1))
@@ -184,9 +188,9 @@ run_claude() {
     timeout_cmd=timeout
   fi
   if [ -n "$timeout_cmd" ]; then
-    $timeout_cmd "$timeout_secs" claude -p "$prompt" 2>&1 || true
+    $timeout_cmd "$timeout_secs" claude --plugin-dir "$CODE_PLUGIN_ROOT" -p "$prompt" 2>&1 || true
   else
-    claude -p "$prompt" 2>&1 || true
+    claude --plugin-dir "$CODE_PLUGIN_ROOT" -p "$prompt" 2>&1 || true
   fi
 }
 export -f run_claude

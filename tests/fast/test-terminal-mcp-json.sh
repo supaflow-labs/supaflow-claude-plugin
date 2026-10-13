@@ -14,8 +14,10 @@ assert_json_has_field "$MCP_JSON" "data['mcpServers']['supaflow']['command'] == 
 assert_json_has_field "$MCP_JSON" "data['mcpServers']['supaflow']['args'] == ['mcp'] or sys.exit(1)" \
   "mcp.json: supaflow server args are ['mcp']"
 
-# The Desktop-specific rejection of plugin .mcp.json must still be present (terminal-only feature).
+# Local stdio belongs to Code, not the hosted marketplace edition.
 assert_file_contains "$PLUGIN_ROOT/skills/using-supaflow/setup-preamble.md" \
-  "do NOT suggest plugin \`.mcp.json\`" "Desktop rule still present"
+  "not the installation path for Desktop chat" "local stdio is restricted to Code"
+assert_file_contains "$MCP_PLUGIN_ROOT/.mcp.json" \
+  'https://app.supa-flow.io/mcp' "hosted package points at production MCP"
 
 print_summary

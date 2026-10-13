@@ -1,0 +1,111 @@
+{
+  "auth_status": {
+    "authenticated": true,
+    "user_id": "user_fixture_reviewer",
+    "organization_id": null,
+    "workspaces": [{"id": "00000000-0000-4000-8000-000000000001", "name": "Fixture workspace"}]
+  },
+  "datasources_list": {
+    "datasources": [
+      {"id": "00000000-0000-4000-8000-000000000002", "name": "Fixture source", "apiName": "fixture_source", "connectorType": "SALESFORCE", "connectorName": "Salesforce", "state": "active"},
+      {"id": "00000000-0000-4000-8000-000000000003", "name": "Fixture destination", "apiName": "fixture_destination", "connectorType": "SNOWFLAKE", "connectorName": "Snowflake", "state": "active"}
+    ],
+    "total": 2,
+    "limit": 200,
+    "offset": 0
+  },
+  "projects_list": {
+    "projects": [{"id": "00000000-0000-4000-8000-000000000004", "name": "Fixture project", "destinationDatasourceId": "00000000-0000-4000-8000-000000000003"}],
+    "total": 1, "limit": 200, "offset": 0
+  },
+  "pipelines_list": {
+    "pipelines": [{"id": "00000000-0000-4000-8000-000000000005", "name": "Fixture pipeline", "state": "active", "sourceDatasourceId": "00000000-0000-4000-8000-000000000002", "sourceName": "Fixture source", "destinationDatasourceId": "00000000-0000-4000-8000-000000000003", "destinationName": "Fixture destination", "projectId": "00000000-0000-4000-8000-000000000004", "projectName": "Fixture project"}],
+    "total": 1, "limit": 200, "offset": 0
+  },
+  "pipelines_prepare_create": {
+    "plan_id": "FIXTURE_SIGNED_PLAN_NOT_A_LIVE_TOKEN",
+    "config": {"pipeline_prefix": "fixture", "ingestion_mode": "INCREMENTAL"},
+    "objects_preview": ["Account"],
+    "object_count_returned": 1,
+    "object_count_total": 2,
+    "object_preview_truncated": true,
+    "expires_in_seconds": 900
+  },
+  "pipelines_schema_pages": [
+    {"objects": [{"fully_qualified_name": "Account", "selected": true, "fields": null}], "limit": 200, "offset": 0, "has_more": true},
+    {"objects": [], "limit": 200, "offset": 200, "has_more": true},
+    {"objects": [{"fully_qualified_name": "Contact", "selected": true, "fields": null}], "limit": 200, "offset": 400, "has_more": false}
+  ],
+  "pipelines_sync": {
+    "job_id": "00000000-0000-4000-8000-000000000006",
+    "pipeline_id": "00000000-0000-4000-8000-000000000005",
+    "status": "queued"
+  },
+  "jobs_list": {
+    "jobs": [{"id": "00000000-0000-4000-8000-000000000006", "name": "Fixture pipeline run", "type": "pipeline_run", "status": "completed", "statusMessage": null}],
+    "total": 1, "limit": 5, "offset": 0
+  },
+  "jobs_status": {
+    "job": {"id": "00000000-0000-4000-8000-000000000006", "status": "completed", "statusMessage": null, "updatedAt": "2026-01-01T00:00:01Z"}
+  },
+  "jobs_get": {
+    "job": {
+      "id": "00000000-0000-4000-8000-000000000006", "status": "completed", "statusMessage": null,
+      "startedAt": "2026-01-01T00:00:00Z", "endedAt": "2026-01-01T00:00:01Z", "executionDurationMs": 1000,
+      "object_details": [{"fully_qualified_source_object_name": "Account", "ingestion_status": "completed", "staging_status": "completed", "loading_status": "completed", "ingestion_metrics": {"output_row_count": 12}}]
+    }
+  },
+  "jobs_logs": {
+    "job": {"id": "00000000-0000-4000-8000-000000000006", "status": "completed", "response": {"total_rows_source": 12, "total_rows_destination": 12}}
+  },
+  "failed_jobs_get": {
+    "job": {"id": "00000000-0000-4000-8000-000000000007", "status": "failed", "statusMessage": "Fixture destination unavailable", "executionDurationMs": 0, "object_details": []}
+  },
+  "failed_jobs_logs": {
+    "job": {"id": "00000000-0000-4000-8000-000000000007", "status": "failed", "response": null}
+  },
+  "skipped_jobs_status": {
+    "job": {"id": "00000000-0000-4000-8000-000000000009", "status": "skipped", "statusMessage": "Fixture overlapping run skipped", "updatedAt": "2026-01-01T01:00:01Z"}
+  },
+  "skipped_jobs_get": {
+    "job": {"id": "00000000-0000-4000-8000-000000000009", "status": "skipped", "statusMessage": "Fixture overlapping run skipped", "executionDurationMs": 0, "object_details": []}
+  },
+  "skipped_jobs_logs": {
+    "job": {"id": "00000000-0000-4000-8000-000000000009", "status": "skipped", "response": null}
+  },
+  "schedules_create": {
+    "schedule": {"id": "00000000-0000-4000-8000-000000000008", "name": "Fixture hourly", "cron": "0 * * * *", "target_id": "00000000-0000-4000-8000-000000000005", "target_type": "pipeline", "state": "active"}
+  },
+  "schedules_list": {
+    "schedules": [{"id": "00000000-0000-4000-8000-000000000008", "name": "Fixture hourly", "cron_schedule": "0 * * * *", "timezone": "UTC", "target_id": "00000000-0000-4000-8000-000000000005", "target_type": "pipeline", "state": "active"}],
+    "total": 1, "limit": 200, "offset": 0
+  },
+  "schedules_run": {
+    "schedule": {"id": "00000000-0000-4000-8000-000000000008", "status": "triggered"}
+  },
+  "schedules_history_before": {
+    "schedule_id": "00000000-0000-4000-8000-000000000008",
+    "executions": [{"execution_id": "00000000-0000-4000-8000-000000000010", "triggered_at": "2026-01-01T00:00:00Z", "completed_at": "2026-01-01T00:00:01Z", "status": "completed", "duration": "00:00:01", "entries_total": 1, "entries_completed": 1, "entries_failed": 0, "error_message": null}]
+  },
+  "schedules_history_after": {
+    "schedule_id": "00000000-0000-4000-8000-000000000008",
+    "executions": [
+      {"execution_id": "00000000-0000-4000-8000-000000000011", "triggered_at": "2026-01-01T01:00:00Z", "completed_at": null, "status": "running", "duration": null, "entries_total": 1, "entries_completed": 0, "entries_failed": 0, "error_message": null},
+      {"execution_id": "00000000-0000-4000-8000-000000000010", "triggered_at": "2026-01-01T00:00:00Z", "completed_at": "2026-01-01T00:00:01Z", "status": "completed", "duration": "00:00:01", "entries_total": 1, "entries_completed": 1, "entries_failed": 0, "error_message": null}
+    ]
+  },
+  "schedules_history_completed": {
+    "schedule_id": "00000000-0000-4000-8000-000000000008",
+    "executions": [{"execution_id": "00000000-0000-4000-8000-000000000011", "triggered_at": "2026-01-01T01:00:00Z", "completed_at": "2026-01-01T01:00:02Z", "status": "completed", "duration": "00:00:02", "entries_total": 1, "entries_completed": 1, "entries_failed": 0, "error_message": null}]
+  },
+  "schedules_history_empty": {
+    "schedule_id": "00000000-0000-4000-8000-000000000008", "executions": []
+  },
+  "schedules_history_ambiguous": {
+    "schedule_id": "00000000-0000-4000-8000-000000000008",
+    "executions": [
+      {"execution_id": "00000000-0000-4000-8000-000000000011", "triggered_at": "2026-01-01T01:00:00Z", "completed_at": null, "status": "running"},
+      {"execution_id": "00000000-0000-4000-8000-000000000012", "triggered_at": "2026-01-01T01:00:00Z", "completed_at": null, "status": "running"}
+    ]
+  }
+}

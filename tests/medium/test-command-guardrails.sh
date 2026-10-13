@@ -4,8 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../test-helpers.sh"
 
-COMMANDS="$SCRIPT_DIR/../../commands"
-SKILLS="$SCRIPT_DIR/../../skills"
+COMMANDS="$CODE_PLUGIN_ROOT/commands"
+SKILLS="$CODE_PLUGIN_ROOT/skills"
 
 echo "=== Command guardrail tests ==="
 echo ""

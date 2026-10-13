@@ -5,7 +5,7 @@ source "$SCRIPT_DIR/../test-helpers.sh"
 
 echo "Testing /explain-job-failure workflow..."
 
-output=$(run_claude "/explain-job-failure" 120)
+output=$(run_claude "/supaflow-code:explain-job-failure" 120)
 
 assert_contains "$output" "job.*id\|which.*job\|provide.*id" "asks for job ID"
 

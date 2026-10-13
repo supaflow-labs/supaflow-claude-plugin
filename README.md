@@ -1,110 +1,79 @@
-# Supaflow Plugin for Claude Code
+# Supaflow plugins for Claude
 
-Official Claude Code plugin for [Supaflow](https://www.supa-flow.io), the unified data movement platform. Manage datasources, pipelines, schedules, job monitoring, and local Docker agents through natural language backed by the host-side Supaflow MCP server in Claude Desktop, or by the `@getsupaflow/cli` in terminal Claude Code.
+This repository is the GitHub marketplace for two independent [Supaflow](https://www.supa-flow.io) plugin packages. Both operate the existing Supaflow platform; neither implements a new MCP server. Choose one edition for a workflow so local CLI credentials cannot be confused with a hosted OAuth connection.
 
-## Install
+| Package | Installable name | Intended use | Execution surface |
+| --- | --- | --- | --- |
+| [Supaflow](plugins/supaflow/README.md) | `supaflow` | Public marketplace submission; Claude web, Desktop chat, Cowork, and hosted workflows in Claude Code | Production HTTP MCP with OAuth; no local executable |
+| [Supaflow Code](plugins/supaflow-code/README.md) | `supaflow-code` | GitHub installs in Claude Code with a local shell | Local CLI-backed stdio MCP, CLI commands, and private-agent lifecycle support |
 
-### From GitHub (recommended)
+## Install from GitHub in Claude Code
 
-Register the repo as a marketplace, then install:
+Register the repository as a marketplace, then install the desired edition by its full ID:
 
 ```bash
 claude plugin marketplace add https://github.com/supaflow-labs/supaflow-claude-plugin.git
-claude plugin install supaflow
+claude plugin install supaflow-code@supaflow
 ```
 
-### Local development (per-session)
+For MCP-only workflows in Claude Code, choose `supaflow@supaflow` instead. Installing the repository's marketplace does not install both plugins. These commands fetch the published GitHub revision, not uncommitted local changes.
 
-Clone the repo and load with `--plugin-dir`:
+For Claude web, Desktop chat, and Cowork, use the **Supaflow** package. Add a published marketplace through **Customize > Plugins > Add > Add marketplace**, or upload only the `plugins/supaflow` folder as a ZIP for a private test. Open the plugin's **Connectors** tab, add/connect Supaflow, and complete OAuth for the intended account/workspace. Adding a plugin alone does not authenticate its connector. The public directory listing requires a separate submission and approval; this restructuring does not publish either package.
+
+## Layout
+
+```text
+.claude-plugin/marketplace.json
+plugins/
+  supaflow/
+    .claude-plugin/plugin.json
+    .mcp.json
+    commands/
+    skills/
+    README.md
+    LICENSE
+  supaflow-code/
+    .claude-plugin/plugin.json
+    .mcp.json
+    commands/
+    skills/
+    hooks/
+    README.md
+    LICENSE
+tests/
+docs/
+```
+
+The repository root is a marketplace, not an installable plugin. Every marketplace `source` points at one self-contained folder. There are no cross-package symlinks or runtime imports.
+
+## Develop and validate without installing
 
 ```bash
-git clone https://github.com/supaflow-labs/supaflow-claude-plugin.git
-claude --plugin-dir ./supaflow-claude-plugin
+claude plugin validate .
+claude plugin validate ./plugins/supaflow
+claude plugin validate ./plugins/supaflow-code
+bash tests/run-tests.sh
+bash tests/run-tests.sh --medium
 ```
 
-`--plugin-dir` loads the plugin for the current session only, without permanent installation. Use this for development and testing.
+The default suite checks both package boundaries, manifests, skills, local hook behavior, and command frontmatter. Medium adds offline hosted-contract regressions and existing CLI parser/workflow guards. No dependency installation or authenticated service calls are required.
 
-## Architecture
-
-The plugin is organized in four layers:
-
-**`using-supaflow` skill** - Injected at session start. Establishes the setup gate, chooses Desktop MCP vs terminal CLI, and routes incoming requests to the correct workflow or domain skill.
-
-**Desktop MCP server** - Ships inside `@getsupaflow/cli` (v0.5.0+) as `supaflow mcp`, registered host-side in `claude_desktop_config.json` (see Setup). It exposes `mcp__supaflow__*` tools by shelling out to the host `supaflow` CLI, so Claude Desktop uses the host CLI and `~/.supaflow/config.json` instead of the cowork VM. Guided tools return structured JSON and keep host-side temp files inside MCP.
-
-**Commands** - Terminal CLI execution layer and workflow specs. Each command maps to one user-facing workflow and preserves tested guardrails for confirmations, parser contracts, and destructive actions.
-
-**Domain skills** - Reference material. Loaded on demand to supply connector properties, config schemas, log patterns, and cron syntax without polluting the base context.
-
-## Available Commands
-
-| Command | Description |
-|---|---|
-| `/create-datasource` | Create a new datasource with guided credential setup |
-| `/edit-datasource` | Edit datasource configuration |
-| `/create-pipeline` | Create a pipeline from source to destination |
-| `/edit-pipeline` | Edit pipeline config or object selection |
-| `/delete-pipeline` | Delete a pipeline permanently |
-| `/check-job` | Check job status or latest sync |
-| `/explain-job-failure` | Diagnose a failed job |
-| `/sync-pipeline` | Trigger a sync and poll for completion |
-| `/create-schedule` | Schedule recurring pipeline syncs |
-
-Local Docker agent operations do not use a slash command. The `supaflow-agents` skill routes them to `supaflow agent start|upgrade|stop|status|logs|remove` in terminal Claude Code or the corresponding `agent_*` MCP tools in Claude Desktop. The upgrade flow requires CLI 0.5.0+ and explicit confirmation because it stops and replaces the running container, while preserving its identity volume and automatically attempting rollback if the replacement does not start successfully.
-
-## Domain Skills
-
-| Skill | Content |
-|---|---|
-| `supaflow-datasources` | Connectors, credentials, and catalog |
-| `supaflow-pipelines` | Pipeline setup, schema, and sync modes |
-| `supaflow-jobs` | Look up job status, metrics, or logs |
-| `supaflow-schedules` | Cron schedules and timezone handling |
-| `supaflow-agents` | Local Docker agent enrollment, safe upgrades (CLI 0.5.0+), resume, status, logs, approval, and re-enrollment |
-
-Domain skills are loaded automatically when a command needs them. They are not invoked directly.
-
-## Setup
-
-### Claude Desktop
-
-Desktop usage should use the host-side MCP server that ships with the CLI (`@getsupaflow/cli` 0.5.0+). Register it in `claude_desktop_config.json`; do not use a plugin `.mcp.json` for Desktop, because that runs inside the cowork VM where the host CLI and `~/.supaflow/config.json` are not visible.
-
-```json
-{
-  "mcpServers": {
-    "supaflow": {
-      "command": "supaflow",
-      "args": ["mcp"]
-    }
-  }
-}
-```
-
-Then restart Claude Desktop. The server reuses the host's `~/.supaflow/config.json`, so there is no per-session install or login. If Desktop cannot find `supaflow` on its PATH, use the absolute path to the binary (the output of `which supaflow`) as `command`.
-
-### Terminal Claude Code
-
-When MCP tools are not available, the plugin falls back to CLI checks. On first session after install, the plugin verifies:
-
-- Node.js 18+ is installed
-- Supaflow CLI v0.5.0+ is installed (`npm install -g @getsupaflow/cli`)
-- CLI is authenticated with a valid API key (`supaflow auth login`)
-- A workspace is selected (`supaflow workspaces select`)
-
-If anything is missing, Claude will guide you through the setup. The user runs `supaflow auth login` in their own terminal; API keys must not be pasted into chat. An API key can be generated at `https://app.supa-flow.io` under Settings > API Keys.
-
-## Testing
+For an explicitly authorized interactive local test, load one package, not the repository root:
 
 ```bash
-cd tests
-./run-tests.sh              # run fast unit tests (default)
-./run-tests.sh --medium     # include medium integration tests
-./run-tests.sh --slow       # include slow end-to-end tests
-./run-tests.sh --live       # run against a live Supaflow workspace
-./run-tests.sh --all        # run everything
+claude --plugin-dir ./plugins/supaflow-code
 ```
+
+This starts a real session and can launch the configured local MCP process. Validate/static-test commands do not install a plugin or launch a test session.
+
+`--slow`, `--live`, and `--all` use Claude or an authenticated Supaflow CLI and may call external services or mutate a workspace. They are opt-in and require explicit authorization. Do not use them as offline verification.
+
+## Migration and distribution
+
+Existing users who installed `supaflow` for local CLI workflows should install `supaflow-code@supaflow` instead. The original `supaflow` identity is retained for hosted MCP. CLI credentials and hosted OAuth grants remain separate; do not reuse a connection label as proof of identity.
+
+See [distribution and migration](docs/PLUGIN_DISTRIBUTION.md) for package-only submission boundaries, account verification, host permission controls, and live-test expectations. Runtime edits increment the affected package's version.
 
 ## License
 
-MIT
+MIT. Each installable package includes the repository license.
