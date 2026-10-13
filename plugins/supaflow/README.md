@@ -1,6 +1,6 @@
 # Supaflow
 
-Build, run, monitor, and troubleshoot data pipelines in Claude through [Supaflow](https://www.supa-flow.io). Discover existing sources and destinations, prepare reviewed pipelines, inspect selected objects, monitor sync jobs, and manage schedules through conversation.
+Build and run data pipelines directly in Claude. Move data across SaaS apps, databases, data warehouses, and data lakes. Transform data using dbt Core™ models and sync data to your business apps with reverse ETL. Orchestrate pipelines, manage schedules, and troubleshoot issues—all through conversation.
 
 This is the hosted-MCP-only marketplace edition. It works in Claude web, Desktop chat, Cowork, and Claude Code without installing a local executable or configuring local files.
 
