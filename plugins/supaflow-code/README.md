@@ -21,10 +21,10 @@ The repository root is not an installable plugin. Install one edition for a work
 
 ## Local prerequisites
 
-- Node.js 18 or newer, Python 3 for the local hook/JSON parsers, and Supaflow CLI 0.5.0 or newer.
+- Node.js 18 or newer, Python 3 for the local hook/JSON parsers, and Supaflow CLI 0.8.0 or newer.
 - Install/update the CLI yourself, or explicitly approve the assistant doing so:
   `npm install -g @getsupaflow/cli`.
-- Authenticate in your own terminal with `supaflow auth login`, then select a workspace with `supaflow workspaces select <name-or-uuid>`. Never paste an API key into chat.
+- Authenticate in your own terminal with `supaflow auth login`, then select a workspace with `supaflow workspaces select <name-or-uuid>`. CLI 0.8.0+ login opens your browser for PKCE sign-in and consent. API keys remain optional for headless use through `SUPAFLOW_API_KEY`, which overrides stored OAuth. Existing keys continue to work. Older CLI releases may prompt for a key; upgrade to CLI 0.8.0 or newer. Never paste credentials into chat.
 - Docker is required only for local private-agent lifecycle operations.
 
 The package's `.mcp.json` launches `supaflow mcp` in Claude Code. That stdio server comes from the existing CLI and uses its local credentials and selected workspace. A SessionStart hook reports setup issues and injects the entry rules; it never installs dependencies or logs in for the user. Read the setup gate even if the hook did not run.
