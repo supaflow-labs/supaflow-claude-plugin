@@ -14,7 +14,7 @@ if [ -z "${_SUPAFLOW_HOOK_TEST:-}" ]; then
   fi
 fi
 
-MIN_CLI_VERSION="0.5.0"
+MIN_CLI_VERSION="0.8.0"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -52,7 +52,7 @@ else
   auth_output=$(supaflow auth status --json 2>/dev/null || echo '{}')
   authenticated=$(echo "$auth_output" | grep -o '"authenticated"[[:space:]]*:[[:space:]]*true' || true)
   if [ -z "$authenticated" ]; then
-    warnings+=("[SETUP:CLI] The Supaflow CLI is not authenticated. Resolve via the CLI gate above (user runs 'supaflow auth login' themselves; no API key in chat) before using the terminal CLI path.")
+    warnings+=("[SETUP:CLI] The Supaflow CLI is not authenticated. Resolve via the CLI gate above (user runs 'supaflow auth login' for browser OAuth themselves; optional API keys for headless use, no credentials in chat) before using the terminal CLI path.")
   else
     workspace_id=$(echo "$auth_output" | grep -o '"workspace_id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/' || true)
     if [ -z "$workspace_id" ] || [ "$workspace_id" = "null" ]; then

@@ -75,7 +75,7 @@ assert_contains "$output" "not installed" "missing CLI: output contains 'not ins
 
 # Scenario 3: Old CLI version
 mock_dir=$(create_mock_cli)
-export MOCK_CLI_VERSION="0.0.1"
+export MOCK_CLI_VERSION="0.7.99"
 output=$(run_hook_with_mocks "$mock_dir")
 unset MOCK_CLI_VERSION
 assert_contains "$output" "outdated" "old CLI version: output contains 'outdated'"
@@ -93,6 +93,16 @@ export MOCK_AUTH_STATUS='{"authenticated":true,"workspace_id":null}'
 output=$(run_hook_with_mocks "$mock_dir")
 unset MOCK_AUTH_STATUS
 assert_contains "$output" "No workspace" "no workspace: output contains 'No workspace'"
+
+# Both CLI auth methods must satisfy readiness without credential output.
+for auth_method in oauth api_key; do
+  mock_dir=$(create_mock_cli)
+  export MOCK_AUTH_STATUS="{\"authenticated\":true,\"method\":\"$auth_method\",\"workspace_id\":\"ws_test\",\"refresh_token\":\"fixture-sensitive-marker\"}"
+  output=$(run_hook_with_mocks "$mock_dir")
+  unset MOCK_AUTH_STATUS
+  assert_not_contains "$output" "\\[SETUP:CLI\\]" "$auth_method: no CLI setup warnings"
+  assert_not_contains "$output" "fixture-sensitive-marker" "$auth_method: credentials stay out of hook context"
+done
 
 # Scenario 6: Missing Node.js
 mock_dir=$(create_mock_cli)

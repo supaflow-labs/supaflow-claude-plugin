@@ -9,11 +9,13 @@ This is the GitHub-installed Claude Code edition. It requires a local shell and 
 
 Read [the setup gate](setup-preamble.md) before operations, even if a SessionStart hook did not run. The hook injects this gate when supported; it is not the only way to discover these rules.
 
+Browser OAuth with PKCE is the default interactive CLI login; API keys remain optional for headless use. Local MCP shares this CLI login, not the hosted connector grant.
+
 ## Execution surfaces
 
 - Prefer the Code package's local CLI-backed MCP server when connected. Its tools use the CLI's authentication, selected workspace, output contracts, and host-file workflows. Read [local MCP workflows](mcp-workflows.md) and [the safe executor](mcp-safe-executor.md).
 - If that local server is unavailable in Claude Code, pass the CLI gate and use the corresponding command. Never blindly repeat a mutation through another surface after a timeout.
-- A separately connected hosted Supaflow server is a different contract: it requires explicit workspace IDs, uses OAuth, and cannot manage local agents. Do not route hosted tools through these local parsers. Use the MCP-only Supaflow edition for hosted workflows; do not install both editions for the same workflow or confuse their accounts.
+- A separately connected hosted Supaflow server is a different contract: it requires explicit workspace IDs, uses a separate hosted OAuth grant, and cannot manage local agents. Do not route hosted tools through these local parsers. Use the MCP-only Supaflow edition for hosted workflows; do not install both editions for the same workflow or confuse their accounts.
 - Tool names such as `mcp__supaflow__auth_status` below are shorthand for this local server's tools. Resolve their actual host/plugin-prefixed names and verify the schema/capability before use. A matching operation name from a hosted server does not establish local availability.
 
 ## HARD RULES

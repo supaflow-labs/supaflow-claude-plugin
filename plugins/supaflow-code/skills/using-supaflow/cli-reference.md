@@ -44,28 +44,30 @@ Exception: schedules resolve by **name** (not api_name).
 
 ## Authentication
 
-Credentials stored in `~/.supaflow/config.json` (mode 0600). Environment variables:
+OAuth or API-key credentials are stored in `~/.supaflow/config.json` (mode 0600). Environment variables:
 
 | Variable | Description |
 |----------|-------------|
-| `SUPAFLOW_API_KEY` | API key (alternative to `supaflow auth login`) |
+| `SUPAFLOW_API_KEY` | Optional headless/CI API key; overrides stored OAuth |
 | `SUPAFLOW_WORKSPACE_ID` | Workspace UUID (alternative to `supaflow workspaces select`) |
 
 To authenticate (the user runs this in their own terminal -- never pass an API key through the agent or chat):
 ```bash
-supaflow auth login            # prompts for the API key in the user's terminal
+supaflow auth login            # opens browser OAuth with PKCE (CLI 0.8.0+)
 supaflow workspaces select <name-or-uuid>
 ```
 
 > **Agent note:** never log in on the user's behalf with a key pasted into chat. The non-interactive `--key <value>` flag is a local convenience for the user's own terminal only -- not an agent workflow. A secret in the transcript is treated as compromised.
 
-API keys start with `ak_` and are created at https://app.supa-flow.io > Settings > API Keys.
+Browser login stores refreshable OAuth credentials. Local stdio MCP shares this login; hosted OAuth remains separate. Existing API-key logins stay valid. If an older CLI prompts for a key, offer an approved upgrade to CLI 0.8.0 or newer.
+
+API keys remain an option for headless use or explicit user preference. API keys start with `ak_` and are created at https://app.supa-flow.io > Settings > API Keys.
 
 ## Error Codes
 
 | Code | Exit | Meaning |
 |------|------|---------|
-| `NOT_AUTHENTICATED` | 2 | Not logged in or bad key |
+| `NOT_AUTHENTICATED` | 2 | Not logged in or invalid credentials |
 | `NO_WORKSPACE` | 2 | No workspace selected |
 | `NOT_FOUND` | 1 | Resource not found |
 | `INVALID_INPUT` | 1 | Bad request data |

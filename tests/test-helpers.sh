@@ -125,7 +125,7 @@ create_mock_cli() {
   mock_dir="$(mktemp -d)"
 
   local node_version="${MOCK_NODE_VERSION:-v20.0.0}"
-  local cli_version="${MOCK_CLI_VERSION:-0.5.0}"
+  local cli_version="${MOCK_CLI_VERSION:-0.8.0}"
   local auth_status="${MOCK_AUTH_STATUS:-authenticated+workspace}"
 
   # Mock node script
@@ -143,7 +143,7 @@ NODE_EOF
   cat > "$mock_dir/supaflow" <<'SUPAFLOW_EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "--version" ]]; then
-  echo "${MOCK_CLI_VERSION:-0.5.0}"
+  echo "${MOCK_CLI_VERSION:-0.8.0}"
   exit 0
 fi
 if [[ "${1:-}" == "auth" && "${2:-}" == "status" && "${3:-}" == "--json" ]]; then
