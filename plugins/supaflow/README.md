@@ -6,10 +6,13 @@ This is the hosted-MCP-only marketplace edition. It works in Claude web, Desktop
 
 ## Connect
 
+You need a Supaflow account: [create one](https://app.supa-flow.io/sign-up) or [sign in](https://app.supa-flow.io/sign-in). See the [Claude setup guide](https://www.supa-flow.io/agentic-data-pipelines/claude-plugin) for the hosted and separate Code editions.
+
 1. Install **Supaflow** from its published listing/marketplace, or upload this plugin folder as a ZIP for private testing.
 2. Open the plugin's **Connectors** tab and add/connect Supaflow.
 3. Complete OAuth for the intended Supaflow account. If password sign-in is needed and an email-code page appears, choose **Use another method** and then **Sign in with your password**. Enter credentials only in Supaflow's sign-in form, never in chat.
 4. Ask Claude to verify the authenticated identity and accessible workspaces. Choose a workspace if more than one matches your request.
+5. Ask **“Help me get started with Supaflow: check my workspace and connections, and explain what I need next.”** Where slash commands are supported, use `/supaflow:setup`. The bundled onboarding skill performs read-only checks and explains missing setup; it does not run automatically on installation or authorize changes. Configure missing source/destination credentials securely in the Supaflow dashboard before creating or running pipelines.
 
 The bundled server is `https://app.supa-flow.io/mcp`. It is the production server, not localhost and not a local process. The plugin does not ship credentials, a hard-coded OAuth client ID/secret, or a callback URL; the host and server handle discovery and authentication.
 

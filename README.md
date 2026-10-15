@@ -9,6 +9,8 @@ This repository is the GitHub marketplace for two independent [Supaflow](https:/
 
 ## Install from GitHub in Claude Code
 
+For account signup and hosted onboarding, see the [Supaflow for Claude setup guide](https://www.supa-flow.io/agentic-data-pipelines/claude-plugin). The hosted package includes read-only onboarding through a natural-language setup request or `/supaflow:setup` where slash commands are supported.
+
 Register the repository as a marketplace, then install the desired edition by its full ID:
 
 ```bash

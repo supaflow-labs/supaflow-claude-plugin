@@ -69,7 +69,9 @@ for (const entry of marketplace.plugins) {
     assert.equal(manifest.author.name, 'Supaflow, LLC');
     assert(manifest.description.length > 40);
     assert.equal(manifest.author.email, 'support@supa-flow.io');
-    assert.equal(manifest.homepage, 'https://www.supa-flow.io/docs');
+    assert.equal(manifest.homepage, entry.name === 'supaflow'
+      ? 'https://www.supa-flow.io/agentic-data-pipelines/claude-plugin'
+      : 'https://www.supa-flow.io/docs');
     assert.equal(manifest.license, 'MIT');
   });
   check(`${entry.name}: package README and license are standalone`, () => {
@@ -78,7 +80,8 @@ for (const entry of marketplace.plugins) {
     assert.equal(text(path.join(root, 'LICENSE')), text(path.join(repo, 'LICENSE')));
   });
   check(`${entry.name}: expected command inventory`, () => {
-    assert.deepEqual(fs.readdirSync(path.join(root, 'commands')).sort(), commands.map((c) => `${c}.md`));
+    const expected = entry.name === 'supaflow' ? [...commands, 'setup'] : commands;
+    assert.deepEqual(fs.readdirSync(path.join(root, 'commands')).sort(), expected.map((c) => `${c}.md`).sort());
   });
   const files = walk(root);
   for (const file of files.filter((f) => f.endsWith('.md'))) {
@@ -117,6 +120,21 @@ for (const entry of marketplace.plugins) {
       : { command: 'supaflow', args: ['mcp'] });
   });
   if (entry.name === 'supaflow') {
+    check('hosted: setup command routes to a bundled onboarding skill without OpenAI-only wiring', () => {
+      assert.equal(entry.homepage, manifest.homepage);
+      assert.equal(manifest.onboardingSkill, undefined);
+      assert.equal(manifest.extensions, undefined);
+      const command = text(path.join(root, 'commands/setup.md'));
+      const targets = [...command.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1]);
+      assert(targets.some((target) => path.resolve(root, 'commands', target)
+        === path.join(root, 'skills/supaflow-setup/SKILL.md')));
+      assert(fs.existsSync(path.join(root, 'skills/supaflow-setup/SKILL.md')));
+      const invokedSkills = [...command.matchAll(/`supaflow:([a-z-]+)`/g)].map((match) => match[1]);
+      assert.deepEqual(invokedSkills, ['supaflow-setup']);
+      for (const skill of invokedSkills) {
+        assert(fs.existsSync(path.join(root, 'skills', skill, 'SKILL.md')));
+      }
+    });
     check('hosted: directory icon and privacy policy are present', () => {
       assert.equal(manifest.privacyPolicyUrl, 'https://www.supa-flow.io/legal/privacy-policy');
       assert.equal(manifest.icon, '.claude-plugin/icon.png');

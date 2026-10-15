@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertSequentialSchemaPages } from './schema-pagination-contract.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(dir, '../../plugins/supaflow');
@@ -130,6 +131,23 @@ check('fixture: empty middle schema page still has more selected objects', () =>
   assert.equal(pages[2].has_more, false);
   assert.equal(pages[2].offset, pages[1].offset + pages[1].limit);
   assert.deepEqual(pages.flatMap((p) => p.objects.map((o) => o.fully_qualified_name)), ['Account', 'Contact']);
+});
+check('schema traversal accepts short and empty pages only with sequential offsets', () => {
+  const pages = fixture.pipelines_schema_pages.map((response) => ({
+    request: { workspace_id: 'workspace-test', identifier: 'pipeline-test', limit: response.limit, offset: response.offset },
+    response,
+  }));
+  assertSequentialSchemaPages(pages);
+});
+check('regression: distant terminal probes cannot hide skipped schema pages', () => {
+  const page = (offset, has_more) => ({
+    request: { workspace_id: 'workspace-test', identifier: 'pipeline-test', limit: 200, offset },
+    response: { limit: 200, offset, objects: [], has_more },
+  });
+  assert.throws(() => assertSequentialSchemaPages([page(0, true), page(200, true), page(9800, false)]), /sequentially/);
+  assert.throws(() => assertSequentialSchemaPages([page(0, true), page(200, true), page(100, false)]), /sequentially/);
+  assert.throws(() => assertSequentialSchemaPages([page(0, true)]), /incomplete/);
+  assert.throws(() => assertSequentialSchemaPages([page(0, false), page(200, false)]), /after completion/);
 });
 check('fixture: enqueue ID matches monitored job', () => {
   const id = fixture.pipelines_sync.job_id;

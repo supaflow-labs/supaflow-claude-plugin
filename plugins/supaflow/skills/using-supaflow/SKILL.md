@@ -20,6 +20,7 @@ Use only the hosted Supaflow connection at `https://app.supa-flow.io/mcp`. This 
 
 | Request | Skill |
 | --- | --- |
+| Get started, connect/reconnect, choose a workspace, or check setup readiness | [supaflow-setup](../supaflow-setup/SKILL.md) |
 | Discover, create, edit, test, or refresh datasources | `supaflow-datasources` |
 | Discover, inspect, create, edit, delete, or sync pipelines | `supaflow-pipelines` |
 | Inspect, monitor, diagnose, or cancel jobs | `supaflow-jobs` |

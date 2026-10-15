@@ -13,7 +13,7 @@
       "description": "Build, run, monitor, and troubleshoot data pipelines through the hosted Supaflow MCP connection. No local CLI required.",
       "category": "productivity",
       "source": "./plugins/supaflow",
-      "homepage": "https://www.supa-flow.io"
+      "homepage": "https://www.supa-flow.io/agentic-data-pipelines/claude-plugin"
     },
     {
       "name": "supaflow-code",
