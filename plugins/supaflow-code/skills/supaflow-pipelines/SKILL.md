@@ -25,7 +25,7 @@ supaflow projects list --json
 supaflow projects create --name "My Project" --destination <datasource-identifier> --json
 ```
 
-The `--destination` flag accepts a datasource UUID or api_name. Optional: `--type <type>` (values: `pipeline`, `ingestion`, `transformation`, `activation`; default: `pipeline`).
+The `--destination` flag accepts a datasource UUID or api_name. Optional: `--type <type>` (values: `pipeline`, `transformation`; default: `pipeline`). For an activation pipeline, create a `pipeline` project and set the pipeline configuration to `pipeline_type: ACTIVATION`. Do not use `activation` or `ingestion` as a new project type.
 
 **Only two project commands exist:** `list` and `create`. There is no `projects get`. Use `projects list` to find existing projects -- it returns `warehouse_datasource_id`, `warehouse_name`, `warehouse_connector_name`, and `pipeline_count`.
 
