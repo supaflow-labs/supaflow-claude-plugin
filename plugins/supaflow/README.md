@@ -4,6 +4,12 @@ Build and run data pipelines directly in Claude. Move data across SaaS apps, dat
 
 This is the hosted-MCP-only marketplace edition. It works in Claude web, Desktop chat, Cowork, and Claude Code without installing a local executable or configuring local files.
 
+## Enable hosted access before connecting
+
+An organization administrator or personal-account owner must select the intended account in [Supaflow Settings > API Keys](https://app.supa-flow.io/settings/api-keys), open **Permissions**, check **Enable API access**, and select **Claude** under **OAuth applications**. Click **Save changes**, review the permissions, then **Save access settings** before connecting or retrying OAuth. API keys are not required. Access is off by default, including for administrators; a connected-account label alone does not prove tool access.
+
+If access is denied, check the active Supaflow account and saved permissions before reconnecting. Do not automatically enable access, substitute CLI authentication, or request secrets in chat. See the [API access guide](https://www.supa-flow.io/docs/settings/api-keys#enable-api-access-first). Native agents and OTP enrollment/recovery are unaffected by these flags.
+
 ## Connect
 
 You need a Supaflow account: [create one](https://app.supa-flow.io/sign-up) or [sign in](https://app.supa-flow.io/sign-in). See the [Claude setup guide](https://www.supa-flow.io/agentic-data-pipelines/claude-plugin) for the hosted and separate Code editions.

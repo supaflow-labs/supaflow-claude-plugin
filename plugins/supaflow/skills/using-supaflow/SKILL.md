@@ -7,6 +7,12 @@ description: Use Supaflow's hosted MCP connection to discover datasources, build
 
 Use only the hosted Supaflow connection at `https://app.supa-flow.io/mcp`. This package supports Claude web, Desktop chat, Cowork, and Claude Code without a local executable. It does not provide shell workflows or a local-agent management surface.
 
+## Enable hosted access before connecting
+
+An organization administrator or personal-account owner must select the intended account in [Supaflow Settings > API Keys](https://app.supa-flow.io/settings/api-keys), open **Permissions**, check **Enable API access**, and select **Claude** under **OAuth applications**. Click **Save changes**, review the permissions, then **Save access settings** before connecting or retrying OAuth. API keys are not required. Access is off by default, including for administrators; a connected-account label alone does not prove tool access.
+
+If access is denied, check the active Supaflow account and saved permissions before reconnecting. Do not automatically enable access, substitute CLI authentication, or request secrets in chat. See the [API access guide](https://www.supa-flow.io/docs/settings/api-keys#enable-api-access-first). Native agents and OTP enrollment/recovery are unaffected by these flags.
+
 ## Connection and workspace gate
 
 1. Discover the available tools belonging to the connected Supaflow server. Tool names in these files are unprefixed operation names; use the actual names exposed by the host, which may add a connector or plugin namespace. Do not invent tool names or use another account's connection.

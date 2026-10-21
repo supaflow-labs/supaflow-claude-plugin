@@ -19,12 +19,20 @@ claude --plugin-dir ./plugins/supaflow-code
 
 The repository root is not an installable plugin. Install one edition for a workflow; local CLI identity and hosted OAuth identity are not interchangeable.
 
+## Enable access before local login
+
+An organization administrator or personal-account owner must select the intended account in [Supaflow Settings > API Keys](https://app.supa-flow.io/settings/api-keys), open **Permissions**, check **Enable API access** and **Supaflow CLI** under **OAuth applications**, then click **Save changes**, review, and **Save access settings**. Access is off by default; administrator status alone does not enable it. API keys are not required for browser OAuth.
+
+For explicitly chosen key-based/headless use, enable **Allow API keys** instead and create a key in the **Keys** tab. Existing keys need this permission too. Local stdio MCP reuses the CLI's login and access settings; selecting hosted **Claude** or **ChatGPT** does not authorize this local path. A key can still be used by the CLI when CLI OAuth is unchecked.
+
+On access denial, have the user or their administrator check the active account and saved permissions before reconnecting. Never change access settings automatically, request credentials in chat, or switch authentication methods to work around a denial. Existing agent identities and dashboard-issued OTP enrollment/recovery remain independent of these settings; CLI-managed operations still need permitted CLI authentication. See the [API access guide](https://www.supa-flow.io/docs/settings/api-keys#enable-api-access-first).
+
 ## Local prerequisites
 
 - Node.js 18 or newer, Python 3 for the local hook/JSON parsers, and Supaflow CLI 0.8.0 or newer.
 - Install/update the CLI yourself, or explicitly approve the assistant doing so:
   `npm install -g @getsupaflow/cli`.
-- Authenticate in your own terminal with `supaflow auth login`, then select a workspace with `supaflow workspaces select <name-or-uuid>`. CLI 0.8.0+ login opens your browser for PKCE sign-in and consent. API keys remain optional for headless use through `SUPAFLOW_API_KEY`, which overrides stored OAuth. Existing keys continue to work. Older CLI releases may prompt for a key; upgrade to CLI 0.8.0 or newer. Never paste credentials into chat.
+- Authenticate in your own terminal with `supaflow auth login`, then select a workspace with `supaflow workspaces select <name-or-uuid>`. CLI 0.8.0+ login opens your browser for PKCE sign-in and consent. API keys remain optional for headless use through `SUPAFLOW_API_KEY`, which overrides stored OAuth. Existing keys work only while API access and API keys remain enabled. Older CLI releases may prompt for a key; upgrade to CLI 0.8.0 or newer. Never paste credentials into chat.
 - Docker is required only for local private-agent lifecycle operations.
 
 The package's `.mcp.json` launches `supaflow mcp` in Claude Code. That stdio server comes from the existing CLI and uses its local credentials and selected workspace. A SessionStart hook reports setup issues and injects the entry rules; it never installs dependencies or logs in for the user. Read the setup gate even if the hook did not run.

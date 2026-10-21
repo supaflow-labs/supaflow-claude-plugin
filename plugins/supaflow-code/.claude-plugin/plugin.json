@@ -1,7 +1,7 @@
 {
   "name": "supaflow-code",
   "displayName": "Supaflow Code",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Manage Supaflow pipelines, datasources, schedules, jobs, and local private agents in Claude Code with the Supaflow CLI and its local MCP server. GitHub install; requires a local shell.",
   "author": {
     "name": "Supaflow, LLC",

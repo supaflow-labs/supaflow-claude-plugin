@@ -10,6 +10,14 @@ Choose the local CLI-backed stdio MCP path when that server is available; otherw
 
 Names such as `mcp__supaflow__auth_status` are shorthand. Resolve the actual tool names exposed by the local server, including any plugin prefix. Its local tools expose the CLI selected-workspace contract and local capabilities such as `workspaces_select` or `pipelines_init` file output. Never apply this contract to the hosted URL server.
 
+## Enable access before local login
+
+An organization administrator or personal-account owner must select the intended account in [Supaflow Settings > API Keys](https://app.supa-flow.io/settings/api-keys), open **Permissions**, check **Enable API access** and **Supaflow CLI** under **OAuth applications**, then click **Save changes**, review, and **Save access settings**. Access is off by default; administrator status alone does not enable it. API keys are not required for browser OAuth.
+
+For explicitly chosen key-based/headless use, enable **Allow API keys** instead and create a key in the **Keys** tab. Existing keys need this permission too. Local stdio MCP reuses the CLI's login and access settings; selecting hosted **Claude** or **ChatGPT** does not authorize this local path. A key can still be used by the CLI when CLI OAuth is unchecked.
+
+On access denial, have the user or their administrator check the active account and saved permissions before reconnecting. Never change access settings automatically, request credentials in chat, or switch authentication methods to work around a denial. Existing agent identities and dashboard-issued OTP enrollment/recovery remain independent of these settings; CLI-managed operations still need permitted CLI authentication. See the [API access guide](https://www.supa-flow.io/docs/settings/api-keys#enable-api-access-first).
+
 ## 1. Local MCP gate
 
 1. Call the local server's `auth_status`. If it is missing, cannot reach the local executable, or returns a transport error, do not retry a mutation through another path; resolve the setup issue first.
@@ -50,7 +58,7 @@ Never silently fall back from the hosted edition to this edition, start private 
 
 - The local CLI stores its OAuth credentials and refreshes access tokens automatically; local stdio MCP invokes that same CLI and reuses its login. Do not add OAuth tokens or API keys to `.mcp.json`, or reuse a hosted connector's OAuth grant as a local credential.
 - API keys remain an option for headless/CI use or when explicitly chosen. The user configures `SUPAFLOW_API_KEY` securely in their own environment; it takes precedence over stored OAuth. Never ask for the value or print the environment or credential file. Keys can be created in Supaflow Settings > API Keys.
-- Existing API-key logins remain valid; do not force migration or log out a working user. Browser login replaces a stored API key; API-key login replaces stored OAuth. Do not remove either without the user's intent.
+- Existing API-key logins remain supported when API access and API keys are enabled; do not force migration or log out a working user. Browser login replaces a stored API key; API-key login replaces stored OAuth. Do not remove either without the user's intent.
 - Updated `auth_status` reports `method: oauth` or `method: api_key`; older releases may omit `method`. Gate on `authenticated` and verify remote access with `workspaces_list` or `supaflow workspaces list --json`, not by looking for `api_key` in a file. Do not equate configured credentials with verified workspace access.
 - If `auth login` prompts for a key, the CLI lacks the browser-login default. Explain the version mismatch and offer an approved upgrade to CLI 0.8.0 or newer.
 - Never initiate login through an MCP tool, approve browser consent for the user, or silently switch to API keys after an OAuth error. Have the user finish login, then recheck auth status and workspace access. Hosted OAuth remains a separate connection.

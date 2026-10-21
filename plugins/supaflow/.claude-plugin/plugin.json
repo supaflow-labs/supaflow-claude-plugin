@@ -1,7 +1,7 @@
 {
   "name": "supaflow",
   "displayName": "Supaflow",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Build and run data pipelines directly in Claude. Move data across SaaS apps, databases, data warehouses, and data lakes. Transform data using dbt Core™ models and sync data to your business apps with reverse ETL. Orchestrate pipelines, manage schedules, and troubleshoot issues—all through conversation.",
   "author": {
     "name": "Supaflow, LLC",
