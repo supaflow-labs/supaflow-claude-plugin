@@ -20,5 +20,11 @@
 - Address valid findings with focused fixes and appropriate regression coverage. For a disputed finding, record the requirement and evidence supporting its disposition before resolving it; involve the owner when the requirement is unclear. Do not repeatedly reopen a resolved decision without new evidence, change product behavior merely to quiet a reviewer, or dismiss unresolved defects to pass a gate.
 - Before merging, require successful applicable checks, resolved conversations, and completed review of the current PR head/base. New commits need fresh evidence. Do not bypass GitHub rules, forge a passing status, or substitute a review request/reaction for completed review. After merge, return to clean updated `main`, remove only this task's merged branches/worktrees, and preserve unrelated work.
 
-- Ordinary changes use PRs to `main`; run the applicable offline package tests and review evidence described below. Do not claim the devops repositories' required CI/Codex gates are installed here; inspect live settings.
+- Ordinary changes use PRs to `main`; run the applicable offline package tests and review evidence described below. Verify the main-branch gates described below.
 - Preserve runtime package versioning and distribution rules below. A merge alone does not authorize live tests, user-wide installation, or external marketplace publication; contributor-only guidance does not require a runtime version bump.
+
+## Main branch enforcement
+
+- The main-branch protection rollout requires PRs, resolved conversations, merge commits, `PR checks` and `Codex review / main`, with no bypass actors. Verify live rule activation and successful current-head evidence before claiming enforcement.
+- `.github/workflows/pr-checks.yml` defines the offline CI coverage. These checks do not prove live credentials, deployments, or database/data correctness. No live test or publication is authorized by CI.
+- Keep the Codex connector enabled for this repository and request a fresh review when necessary. Missing or incomplete review is not a pass.
