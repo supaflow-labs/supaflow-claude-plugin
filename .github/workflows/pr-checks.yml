@@ -30,3 +30,4 @@ jobs:
       - run: python -m venv .venv-ci
       - run: echo "$PWD/.venv-ci/bin" >> "$GITHUB_PATH"
       - run: bash tests/run-tests.sh --medium
+      - run: node --test .github/tests/codex-review-gate.test.cjs
