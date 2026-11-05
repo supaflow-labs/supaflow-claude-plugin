@@ -15,7 +15,7 @@ First follow [the connection/workspace gate](../using-supaflow/SKILL.md), [safet
 
 ## Create and configure
 
-1. Call `datasources_init(connector)` to retrieve the connector properties and required fields. Use `docs` when available for connector-specific prerequisites; do not invent config properties.
+1. Resolve the intended connection role from the request: `role: "SOURCE"` for a source or `role: "DESTINATION"` for a destination. If unclear, ask; do not infer the role from connector type. Call `datasources_init(connector, role)` to retrieve the connector properties and role defaults. Pass the same explicit role to `datasources_create`, including server-side-copy creation. Defaults apply only to omitted configuration properties; preserve explicit choices. If source discovery is explicitly disabled, explain that choice in the final review before creation. Use `docs` when available for connector-specific prerequisites; do not invent config properties.
 2. Resolve non-secret properties and ask only for missing information. For credentials, direct the user to connector OAuth or the datasource form in `https://app.supa-flow.io`. Never request plaintext secrets in chat or MCP input.
 3. If an accessible existing datasource can be copied and the user requests that copy, use `datasources_create` with `copy_from_identifier`. Otherwise use only a supported Supaflow encrypted-envelope flow. Do not invent envelope contents or copy another account's identifiers.
 4. Show connector, name, destination/source role, non-secret changes, and whether a connection test will run. Obtain explicit approval of the final creation configuration before `datasources_create`.
