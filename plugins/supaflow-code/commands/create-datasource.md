@@ -103,7 +103,7 @@ else:
 
 ## Step 4: Scaffold the Env File
 
-Determine the connector type (already resolved in Step 2).
+Determine the connector type (already resolved in Step 2). Resolve the intended connection role from the request: `SOURCE` for a source or `DESTINATION` for a destination. If unclear, ask; do not infer the role from connector type. Substitute that role for `<ROLE>` below and pass the same explicit role to both init and create, including the CLI-backed MCP tools.
 
 Common connector types: `POSTGRES`, `SNOWFLAKE`, `S3`, `HUBSPOT`, `SALESFORCE`, `AIRTABLE`, `ORACLE_TM`, `SFMC`, `SQL_SERVER`, `GOOGLE_DRIVE`.
 
@@ -121,7 +121,7 @@ for c in d.get('data', []):
 Once you have the connector type and a display name from the user, scaffold the env file:
 
 ```bash
-supaflow datasources init --connector <CONNECTOR_TYPE> --name "<Display Name>" --json | python3 -c "
+supaflow datasources init --role <ROLE> --connector <CONNECTOR_TYPE> --name "<Display Name>" --json | python3 -c "
 import sys,json; d=json.load(sys.stdin)
 if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
 print(f\"Scaffolded: {d['file']}\")
@@ -130,7 +130,7 @@ print(f\"Required fields: {d['required_properties']} | Optional fields: {d['opti
 "
 ```
 
-Note the env file path from the output.
+Note the env file path from the output. The generated header records the role. Role defaults only fill omitted properties during creation; explicit file values win. In particular, a file from plain init or DESTINATION init may contain `enableSourceSchemaDiscovery=false`. Passing `--role SOURCE` at create time preserves that value and returns a warning. Explain it and review the intended discovery setting before final approval; change or remove the entry only when the user wants the source default.
 
 ## Step 5: Read the Env File and Identify Fields
 
@@ -188,6 +188,7 @@ Ready to create datasource:
 
 Name:           <DISPLAY_NAME>
 Connector:      <CONNECTOR_TYPE>
+Role:           <ROLE>
 Key settings:   host=<value>, port=<value>, database=<value>, ...
 Sensitive:      <N> fields filled by user in env file
 Env file:       <filename>.env
@@ -200,11 +201,12 @@ Proceed with creation?
 Once confirmed:
 
 ```bash
-supaflow datasources create --from <ENV_FILE> --json | python3 -c "
+supaflow datasources create --role <ROLE> --from <ENV_FILE> --json | python3 -c "
 import sys,json; d=json.load(sys.stdin)
 if 'error' in d: print('ERROR: ' + d['error']['message']); sys.exit(1)
 print(f\"Created datasource: {d.get('name')} (api_name={d.get('api_name')}, id={d.get('id')})\")
 print(f\"State: {d.get('state')} | Connector: {d.get('connector_type')}\")
+for warning in d.get('warnings', []): print('WARNING: ' + warning)
 "
 ```
 

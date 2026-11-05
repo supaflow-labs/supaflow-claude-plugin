@@ -46,7 +46,13 @@ contains('destructive actions require immediate confirmation', safe, /explicit c
 contains('plaintext credentials never go through the client', entry, /Never send plaintext credentials/);
 contains('encrypted envelopes must not be fabricated', safe, /fabricate encrypted envelopes/);
 
-contains('datasource init comes before creation', datasources, /datasources_init\(connector\)/);
+contains('datasource init comes before creation', datasources, /datasources_init\(connector, role\)/);
+const createDatasourceCommand = read('commands/create-datasource.md');
+for (const [name, source] of [['command', createDatasourceCommand], ['skill', datasources]]) {
+  contains(`datasource ${name} resolves both connection roles`, source, /role: "SOURCE"[\s\S]*role: "DESTINATION"/);
+  contains(`datasource ${name} carries the explicit role into init and create`, source, /same explicit role[\s\S]*datasources_create|same explicit role to both `datasources_init` and `datasources_create`/);
+  contains(`datasource ${name} preserves explicit configuration choices`, source, /preserve explicit choices/);
+}
 contains('server-side datasource copy is supported', datasources, /copy_from_identifier/);
 contains('catalog inspection does not refresh', datasources, /refresh: false/);
 contains('catalog reset waits for restoration, not job terminal alone', datasources, /catalog_reset\.maintenance_active` is false[\s\S]*terminal job alone is insufficient/);

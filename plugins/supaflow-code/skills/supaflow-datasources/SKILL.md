@@ -82,16 +82,16 @@ Only proceed with creation if no suitable datasource exists or the user explicit
 
 ### Scaffolding an Env File
 
-The `datasources init` command generates a connector-specific env file with all available properties:
+Resolve the intended connection role first: `SOURCE` for a source or `DESTINATION` for a destination. If unclear, ask. Pass the same explicit role to both `datasources init` and `datasources create`, or the corresponding CLI-backed MCP tools. The `datasources init` command generates a connector-specific env file with role defaults:
 
 ```bash
-supaflow datasources init --connector <TYPE> --name "<Display Name>" --json
+supaflow datasources init --role <ROLE> --connector <TYPE> --name "<Display Name>" --json
 
 # Optionally specify the output file path
-supaflow datasources init --connector <TYPE> --name "<Display Name>" --output my_source.env --json
+supaflow datasources init --role <ROLE> --connector <TYPE> --name "<Display Name>" --output my_source.env --json
 ```
 
-This creates a file named after the api_name (e.g., `my_postgres.env`) unless `--output` is specified. The file contains annotated properties grouped by category, with defaults pre-filled.
+This creates a file named after the api_name (e.g., `my_postgres.env`) unless `--output` is specified. The file contains annotated properties grouped by category, with defaults pre-filled and the role recorded in its header. Explicit file values override role defaults at creation: `--role SOURCE` does not overwrite `enableSourceSchemaDiscovery=false`. Review that setting before approval and surface every returned `warnings` entry; do not silently change an explicit choice.
 
 Init JSON output:
 ```json
@@ -151,7 +151,7 @@ Three consequences worth internalizing, because agents routinely get this wrong:
 The `datasources create` command auto-encrypts plaintext secrets and tests the connection before saving:
 
 ```bash
-supaflow datasources create --from <filename>.env --json
+supaflow datasources create --role <ROLE> --from <filename>.env --json
 ```
 
 Returns the created datasource object with its UUID and api_name on success.
@@ -349,9 +349,9 @@ supaflow datasources get my_postgres
 ### Create a datasource non-interactively
 
 ```bash
-supaflow datasources init --connector postgres --name "My Postgres" --json
+supaflow datasources init --role SOURCE --connector postgres --name "My Postgres" --json
 # Edit the env file programmatically
-supaflow datasources create --from my_postgres.env --json
+supaflow datasources create --role SOURCE --from my_postgres.env --json
 ```
 
 ### Export catalog for pipeline creation
